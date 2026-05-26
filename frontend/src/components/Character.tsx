@@ -36,8 +36,14 @@ export function Character({ p }: { p: PresenceView }) {
       </div>
       <div className="name">{p.user.name}</div>
       <div className="status">
-        {p.isPresent ? `在室 ${minutes}分` : "不在"}
-        {p.source === "manual" && p.isPresent ? "（手動）" : ""}
+        {p.isPresent ? (
+          <>
+            ON DUTY · <strong>{minutes}m</strong>
+            {p.source === "manual" ? " · MNL" : ""}
+          </>
+        ) : (
+          <>OFFLINE</>
+        )}
       </div>
     </div>
   );

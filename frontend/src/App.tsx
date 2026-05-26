@@ -20,7 +20,6 @@ function App() {
       .finally(() => setLoading(false));
   }, []);
 
-  // ログイン中は1分間隔でping
   usePresencePing(me !== null);
 
   const logout = () => {
@@ -28,19 +27,30 @@ function App() {
     setMe(null);
   };
 
-  if (loading) return <p>読み込み中...</p>;
+  if (loading) {
+    return (
+      <p className="muted" style={{ textAlign: "center", marginTop: 80 }}>
+        ▸ BOOTING…
+      </p>
+    );
+  }
   if (!me) return <Login onLogin={setMe} />;
 
   return (
     <>
-      <header>
+      <header className="ops-bar">
         <div>
-          <h1>🪖 LabSoldier</h1>
-          <small>研究室にいる仲間が見える化</small>
+          <span className="tag">Lab Presence HUD</span>
+          <h1 className="ops-bar__title">
+            Lab<em>Soldier</em>
+          </h1>
+          <p className="ops-bar__sub">研究室の戦況を可視化する</p>
         </div>
-        <div className="row">
-          <small>{me.name}</small>
-          <button onClick={logout}>ログアウト</button>
+        <div className="ops-bar__user">
+          <span className="who">{me.name}</span>
+          <button className="ghost" onClick={logout}>
+            Logout
+          </button>
         </div>
       </header>
       <PresenceList />

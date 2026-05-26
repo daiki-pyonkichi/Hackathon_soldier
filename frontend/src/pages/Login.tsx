@@ -2,10 +2,6 @@ import { useState } from "react";
 import { api } from "../api/client";
 import type { User } from "../types";
 
-/**
- * ログイン/登録画面。
- * UIは薄く保ち、認証処理は api client に委譲する。
- */
 export function Login({ onLogin }: { onLogin: (u: User) => void }) {
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [name, setName] = useState("");
@@ -32,27 +28,39 @@ export function Login({ onLogin }: { onLogin: (u: User) => void }) {
   };
 
   return (
-    <section className="card" style={{ maxWidth: 360, margin: "40px auto" }}>
-      <h2 style={{ marginTop: 0 }}>ログイン</h2>
-      <div className="auth-tabs" aria-label="認証モード">
+    <section className="terminal" aria-label="認証ターミナル">
+      <div className="terminal__brand">
+        <span className="dot" aria-hidden />
+        <span>LabSoldier</span>
+      </div>
+      <h1 className="terminal__title">
+        Lab<em>Soldier</em>
+      </h1>
+
+      <div className="auth-tabs" role="tablist" aria-label="認証モード">
         <button
           type="button"
+          role="tab"
+          aria-selected={mode === "login"}
           className={mode === "login" ? "active" : ""}
           onClick={() => setMode("login")}
         >
-          ログイン
+          Sign-In
         </button>
         <button
           type="button"
+          role="tab"
+          aria-selected={mode === "signup"}
           className={mode === "signup" ? "active" : ""}
           onClick={() => setMode("signup")}
         >
-          新規登録
+          Enlist
         </button>
       </div>
+
       <form onSubmit={submit} className="auth-form">
         <label className="field">
-          <span>ユーザー名</span>
+          <span>User ID</span>
           <input
             type="text"
             placeholder="naganawa"
@@ -63,7 +71,7 @@ export function Login({ onLogin }: { onLogin: (u: User) => void }) {
           />
         </label>
         <label className="field">
-          <span>パスワード</span>
+          <span>Passcode</span>
           <input
             type="password"
             placeholder="8文字以上"
@@ -73,17 +81,20 @@ export function Login({ onLogin }: { onLogin: (u: User) => void }) {
           />
         </label>
         <button className="primary" disabled={busy || !name.trim() || !password}>
-          {busy ? "送信中..." : mode === "login" ? "ログイン" : "登録して始める"}
+          {busy
+            ? "認証中..."
+            : mode === "login"
+              ? "▸ Authenticate"
+              : "▸ Deploy"}
         </button>
       </form>
+
       {mode === "login" && (
         <p className="auth-hint">
-          初期メンバーは <code>password123</code> で入れます。
+          初期メンバーは <code>password123</code> でアクセス可能。
         </p>
       )}
-      {error && (
-        <p style={{ color: "crimson", marginBottom: 0 }}>{error}</p>
-      )}
+      {error && <p className="auth-error">{error}</p>}
     </section>
   );
 }
