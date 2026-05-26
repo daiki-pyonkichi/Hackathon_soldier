@@ -28,7 +28,7 @@
 4. `docs/development-order.md` — 開発の進め方
 5. `docs/guidebook-{あなたの名前}.pdf` — 自分の担当の手順書（PDF）
 
-`docs/pdf/` に4人分の作業指南書PDFが入っています。
+`docs/pdf/` に作業指南書PDFが入っています。
 
 PDFを再生成したい時:
 

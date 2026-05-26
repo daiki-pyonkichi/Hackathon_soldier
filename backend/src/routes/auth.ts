@@ -1,42 +1,73 @@
 import { Router } from "express";
 import { store } from "../db/store.js";
+import { getAuthenticatedUser } from "../middleware/auth.js";
+import { hashPassword, verifyPassword } from "../services/password.js";
+import { signAuthToken } from "../services/token.js";
 
 /**
- * 認証ルート（モック実装）。
- * 担当: バックエンド係 (tsutsumi) で Firebase Auth or 自前JWT に差し替え。
+ * 認証ルート。
+ * 品川シーサイド側の「入力検証 → ユーザー検索 → パスワード検証 → token発行」
+ * の流れを、LabSoldier向けに軽量化して実装している。
  */
 export const authRouter = Router();
 
-// POST /api/auth/login : { name } → user を返すだけのモック
+function readCredentials(body: unknown): { name: string; password: string } {
+  const value = body as { name?: unknown; password?: unknown };
+  return {
+    name: String(value?.name ?? "").trim(),
+    password: String(value?.password ?? ""),
+  };
+}
+
+function isValidName(name: string): boolean {
+  return /^[a-zA-Z0-9_-]{2,24}$/.test(name);
+}
+
+// POST /api/auth/login : { name, password } → user + token
 authRouter.post("/login", (req, res) => {
-  const name = String(req.body?.name ?? "").trim();
-  if (!name) return res.status(400).json({ error: "name required" });
-  const user = store.listUsers().find((u) => u.name === name);
-  if (!user) return res.status(404).json({ error: "user not found" });
-  return res.json({ user, token: `mock-${user.id}` });
+  const { name, password } = readCredentials(req.body);
+  if (!name || !password) {
+    return res.status(400).json({ error: "name and password are required" });
+  }
+
+  const authUser = store.getAuthUserByName(name);
+  if (!authUser || !verifyPassword(password, authUser.passwordHash)) {
+    return res.status(401).json({ error: "name or password is incorrect" });
+  }
+
+  const user = store.getUser(authUser.id)!;
+  return res.json({ user, token: signAuthToken(user) });
 });
 
-// POST /api/auth/signup : 同上、今は何もしない
+// POST /api/auth/signup : { name, password } → user + token
 authRouter.post("/signup", (req, res) => {
-  return res.status(501).json({ error: "not implemented" });
+  const { name, password } = readCredentials(req.body);
+  if (!isValidName(name)) {
+    return res.status(400).json({
+      error: "name must be 2-24 chars: letters, numbers, _ or -",
+    });
+  }
+  if (password.length < 8) {
+    return res.status(400).json({ error: "password must be at least 8 characters" });
+  }
+  if (store.getAuthUserByName(name)) {
+    return res.status(409).json({ error: "name is already taken" });
+  }
+
+  const user = store.createUser({ name, passwordHash: hashPassword(password) });
+  return res.status(201).json({ user, token: signAuthToken(user) });
 });
 
-// GET /api/auth/me : Authorization: Bearer mock-<userId> でユーザーを返す
+// GET /api/auth/me : Authorization: Bearer <token> でユーザーを返す
 authRouter.get("/me", (req, res) => {
-  const auth = req.headers.authorization ?? "";
-  const token = auth.replace(/^Bearer\s+/, "");
-  const userId = token.replace(/^mock-/, "");
-  const user = store.getUser(userId);
+  const user = getAuthenticatedUser(req);
   if (!user) return res.status(401).json({ error: "unauthorized" });
   return res.json({ user });
 });
 
 // GET /api/me 用のエクスポート（index.ts でマウント）
 export function meHandler(req: import("express").Request, res: import("express").Response) {
-  const auth = req.headers.authorization ?? "";
-  const token = auth.replace(/^Bearer\s+/, "");
-  const userId = token.replace(/^mock-/, "");
-  const user = store.getUser(userId);
+  const user = getAuthenticatedUser(req);
   if (!user) return res.status(401).json({ error: "unauthorized" });
   return res.json({ user });
 }

@@ -1,10 +1,17 @@
 import { randomUUID } from "node:crypto";
 import { db } from "./database.js";
-import type { Presence, PresenceLog, User } from "../types.js";
+import type { AuthUserRecord, Presence, PresenceLog, User } from "../types.js";
 
 const userByIdStmt = db.prepare("SELECT * FROM users WHERE id = ?");
-const userByNameStmt = db.prepare("SELECT * FROM users WHERE name = ?");
+const userByNameStmt = db.prepare(
+  "SELECT * FROM users WHERE LOWER(name) = LOWER(?)",
+);
 const allUsersStmt = db.prepare("SELECT * FROM users ORDER BY created_at");
+const userCountStmt = db.prepare("SELECT COUNT(*) AS n FROM users");
+const insertUserStmt = db.prepare(`
+  INSERT INTO users (id, name, password_hash, avatar_id, created_at)
+  VALUES (?, ?, ?, ?, ?)
+`);
 const presenceByIdStmt = db.prepare("SELECT * FROM presence WHERE user_id = ?");
 const allPresencesStmt = db.prepare("SELECT * FROM presence");
 const upsertPresenceStmt = db.prepare(`
@@ -16,6 +23,10 @@ const upsertPresenceStmt = db.prepare(`
     entered_at = excluded.entered_at,
     last_seen_at = excluded.last_seen_at
 `);
+const insertBlankPresenceStmt = db.prepare(`
+  INSERT OR IGNORE INTO presence (user_id, is_present, source, entered_at, last_seen_at)
+  VALUES (?, 0, 'wifi', NULL, NULL)
+`);
 const insertLogStmt = db.prepare(`
   INSERT INTO presence_logs (id, user_id, entered_at, left_at, duration_sec)
   VALUES (?, ?, ?, ?, ?)
@@ -23,6 +34,8 @@ const insertLogStmt = db.prepare(`
 const logsByUserStmt = db.prepare(`
   SELECT * FROM presence_logs WHERE user_id = ? ORDER BY left_at DESC
 `);
+
+const avatarIds = ["soldier-blue", "soldier-red", "soldier-green", "soldier-yellow"];
 
 type UserRow = {
   id: string;
@@ -50,7 +63,15 @@ type PresenceLogRow = {
 
 //ここからデータベースの命名規則をアプリケーションの命名規則に変換する関数
 function rowToUser(r: UserRow): User {
-  return { id: r.id, name: r.name, avatarId: r.avatar_id };
+  return {
+    id: r.id,
+    name: r.name,
+    avatarId: r.avatar_id,
+    createdAt: r.created_at,
+  };
+}
+function rowToAuthUser(r: UserRow): AuthUserRecord {
+  return { ...rowToUser(r), passwordHash: r.password_hash };
 }
 function rowToPresence(r: PresenceRow): Presence {
   return {
@@ -66,15 +87,24 @@ function rowToPresence(r: PresenceRow): Presence {
 export const store = {
   listUsers(): User[] {
     return (allUsersStmt.all() as UserRow[]).map(rowToUser);
-  },//ユーザーをすべてとる関数
+  },//ユーザーをすべて取る関数
   getUser(id: string): User | undefined {
     const row = userByIdStmt.get(id) as UserRow | undefined;
     return row ? rowToUser(row) : undefined;
-  },//ユーザーIDからユーザー情報を取得する関数
-  getUserByName(name: string): User | undefined {
+  },//ユーザーIDからユーザー情報（公開用）を取得する関数
+  getAuthUserByName(name: string): AuthUserRecord | undefined {
     const row = userByNameStmt.get(name) as UserRow | undefined;
-    return row ? rowToUser(row) : undefined;
-  },//ユーザー名からユーザー情報を取得する関数
+    return row ? rowToAuthUser(row) : undefined;
+  },//ユーザー名から認証用ユーザー（passwordHash 付き）を取得する関数
+  createUser(input: { name: string; passwordHash: string; avatarId?: string }): User {
+    const count = (userCountStmt.get() as { n: number }).n;
+    const id = randomUUID();
+    const avatarId = input.avatarId ?? avatarIds[count % avatarIds.length];
+    const createdAt = new Date().toISOString();
+    insertUserStmt.run(id, input.name, input.passwordHash, avatarId, createdAt);
+    insertBlankPresenceStmt.run(id);
+    return { id, name: input.name, avatarId, createdAt };
+  },//新規ユーザーを作る関数（auth.ts の signup から呼ばれる）
   listPresences(): Presence[] {
     return (allPresencesStmt.all() as PresenceRow[]).map(rowToPresence);
   },//すべての在室情報を取得する関数

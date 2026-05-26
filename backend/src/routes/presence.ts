@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { store } from "../db/store.js";
+import { getAuthenticatedUser } from "../middleware/auth.js";
 import { getClientIp, isLabIp } from "../middleware/ipCheck.js";
 import { judgeStatus, elapsedMinutes } from "../lib/judge.js";
 import type { Presence, PresenceView } from "../types.js";
@@ -11,36 +12,27 @@ import type { Presence, PresenceView } from "../types.js";
  */
 export const presenceRouter = Router();
 
-// 簡易: Authorization から userId を取り出す（モック）
-function userIdFromReq(req: import("express").Request): string | null {
-  const token = (req.headers.authorization ?? "").replace(/^Bearer\s+/, "");
-  if (!token.startsWith("mock-")) return null;
-  return token.slice("mock-".length);
-}
-
 // POST /api/presence/ping : Wi-Fi(IP)判定で在室更新
 presenceRouter.post("/ping", (req, res) => {
-  const userId = userIdFromReq(req);
-  if (!userId) return res.status(401).json({ error: "unauthorized" });
-  const user = store.getUser(userId);
+  const user = getAuthenticatedUser(req);
   if (!user) return res.status(401).json({ error: "unauthorized" });
 
-  const ip = getClientIp(req);//リクエストからクライアントIPを取得
-  const present = isLabIp(ip);//IPが研究室のものか判定
-  const now = new Date().toISOString();//時間を取得
-  const prev = store.getPresence(userId);//在室情報を取得
+  const ip = getClientIp(req);
+  const present = isLabIp(ip);
+  const now = new Date().toISOString();
+  const prev = store.getPresence(user.id);
 
   // 在室→不在に切り替わった瞬間にセッションをログ化
   if (!present && prev?.isPresent && prev.enteredAt) {
     store.insertPresenceLog({
-      userId,
+      userId: user.id,
       enteredAt: prev.enteredAt,
       leftAt: now,
     });
   }
 
   const updated = store.upsertPresence({
-    userId,
+    userId: user.id,
     isPresent: present,
     source: "wifi",
     enteredAt: present
@@ -56,26 +48,26 @@ presenceRouter.post("/ping", (req, res) => {
 
 // POST /api/presence/manual : 手動 checkin/checkout
 presenceRouter.post("/manual", (req, res) => {
-  const userId = userIdFromReq(req);
-  if (!userId) return res.status(401).json({ error: "unauthorized" });
+  const user = getAuthenticatedUser(req);
+  if (!user) return res.status(401).json({ error: "unauthorized" });
   const action = String(req.body?.action ?? "");
   if (action !== "checkin" && action !== "checkout") {
     return res.status(400).json({ error: "action must be checkin or checkout" });
   }
   const now = new Date().toISOString();
-  const prev = store.getPresence(userId);
+  const prev = store.getPresence(user.id);
 
   // 手動チェックアウト時にセッションをログ化
   if (action === "checkout" && prev?.isPresent && prev.enteredAt) {
     store.insertPresenceLog({
-      userId,
+      userId: user.id,
       enteredAt: prev.enteredAt,
       leftAt: now,
     });
   }
 
   const updated = store.upsertPresence({
-    userId,
+    userId: user.id,
     isPresent: action === "checkin",
     source: "manual",
     enteredAt:
@@ -89,8 +81,11 @@ presenceRouter.post("/manual", (req, res) => {
   return res.json(updated);
 });
 
-// GET /api/presence : 在室者一覧（3状態判定）
-presenceRouter.get("/", (_req, res) => {
+// GET /api/presence : 在室者一覧（3状態判定、要認証）
+presenceRouter.get("/", (req, res) => {
+  const authUser = getAuthenticatedUser(req);
+  if (!authUser) return res.status(401).json({ error: "unauthorized" });
+
   const users = store.listUsers();
   const presences = store.listPresences();
   const view: PresenceView[] = users.map((u) => {

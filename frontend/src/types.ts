@@ -2,6 +2,19 @@ export interface User {
   id: string;
   name: string;
   avatarId: string;
+  createdAt: string;
+}
+
+export interface LoginCredentials {
+  name: string;
+  password: string;
+}
+
+export type SignupInput = LoginCredentials;
+
+export interface AuthResponse {
+  user: User;
+  token: string;
 }
 
 export type PresenceSource = "wifi" | "manual";

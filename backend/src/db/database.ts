@@ -1,6 +1,7 @@
 import Database from "better-sqlite3";
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
+import { hashPassword } from "../services/password.js";
 // データベースの初期化とテーブル作成
 const DB_PATH = "data/labsoldier.db"; // データベースを置くパス
 mkdirSync(dirname(DB_PATH), { recursive: true });
@@ -49,24 +50,26 @@ db.exec(`
   //duration_sec 在室時間（秒）
 
 
+// 開発用初期パスワードは password123（固定 salt でハッシュ化、毎起動で同じ値になる）
+const seedCreatedAt = new Date("2026-05-22T00:00:00.000Z").toISOString();
+const seedPasswordHash = hashPassword("password123", "labsoldier-dev-seed");
+
 const seedUsers = [
   { id: "u-naganawa", name: "naganawa", avatarId: "soldier-blue" },
   { id: "u-tsutsumi", name: "tsutsumi", avatarId: "soldier-red" },
   { id: "u-takebayashi", name: "takebayashi", avatarId: "soldier-green" },
-  { id: "u-kuremoto", name: "kuremoto", avatarId: "soldier-yellow" },
 ];
 
 const insertUser = db.prepare(`
   INSERT OR IGNORE INTO users (id, name, password_hash, avatar_id, created_at)
-  VALUES (?, ?, '', ?, ?)
+  VALUES (?, ?, ?, ?, ?)
 `);
 const insertPresence = db.prepare(`
   INSERT OR IGNORE INTO presence (user_id, is_present, source, entered_at, last_seen_at)
   VALUES (?, 0, 'wifi', NULL, NULL)
 `);
-const now = new Date().toISOString();
 for (const u of seedUsers) {
-  insertUser.run(u.id, u.name, u.avatarId, now);
+  insertUser.run(u.id, u.name, seedPasswordHash, u.avatarId, seedCreatedAt);
   insertPresence.run(u.id);
 }
 

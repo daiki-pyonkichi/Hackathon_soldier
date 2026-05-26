@@ -37,13 +37,15 @@ export function PresenceList({ refreshMs = 15_000 }: { refreshMs?: number }) {
 
   return (
     <section className="card">
-      <div className="row">
-        <h2 style={{ margin: 0 }}>在室メンバー</h2>
+      <div className="card__head">
+        <h2>Roster · 在室メンバー</h2>
         <span className="spacer" />
-        <small>現在 {presentCount} 人在室中</small>
+        <span className="count">
+          <strong>{presentCount}</strong> active / {list.length}
+        </span>
       </div>
-      {error && <p style={{ color: "crimson" }}>取得失敗: {error}</p>}
-      <div className="character-grid" style={{ marginTop: 12 }}>
+      {error && <p className="auth-error">取得失敗: {error}</p>}
+      <div className="character-grid">
         {list.map((p) => (
           <Character key={p.userId} p={p} />
         ))}

@@ -25,20 +25,25 @@ export function ManualCheckin() {
 
   return (
     <section className="card">
-      <h2 style={{ marginTop: 0 }}>手動切替</h2>
-      <p style={{ marginTop: 0, color: "var(--muted)" }}>
-        Wi-Fi 判定が効かないとき（出張先、4G接続時など）の補助。
+      <div className="card__head">
+        <h2>手動設定</h2>
+      </div>
+      <p className="muted" style={{ margin: "0 0 16px" }}>
+        在室／不在を自分で切り替えます。
       </p>
-      <div className="row">
+      <div className="manual-row">
         <button
           className="primary"
           disabled={busy !== null}
           onClick={() => handle("checkin")}
         >
-          {busy === "checkin" ? "..." : "チェックイン"}
+          {busy === "checkin" ? "…" : "在室にする"}
         </button>
-        <button disabled={busy !== null} onClick={() => handle("checkout")}>
-          {busy === "checkout" ? "..." : "チェックアウト"}
+        <button
+          disabled={busy !== null}
+          onClick={() => handle("checkout")}
+        >
+          {busy === "checkout" ? "…" : "不在にする"}
         </button>
         <span className="spacer" />
         {msg && <small>{msg}</small>}
