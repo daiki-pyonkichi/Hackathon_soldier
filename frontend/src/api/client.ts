@@ -1,4 +1,5 @@
-import type { PresenceView, User } from "../types";
+import { authStorage } from "./authStorage";
+import type { AuthResponse, LoginCredentials, PresenceView, SignupInput, User } from "../types";
 
 /**
  * API クライアント。
@@ -6,10 +7,8 @@ import type { PresenceView, User } from "../types";
  *   - 認証トークンの保存/失効処理、エラーハンドリングの強化
  */
 
-const TOKEN_KEY = "labsoldier.token";
-
 function getToken(): string | null {
-  return localStorage.getItem(TOKEN_KEY);
+  return authStorage.getToken();
 }
 
 function authHeaders(): Record<string, string> {
@@ -17,59 +16,84 @@ function authHeaders(): Record<string, string> {
   return t ? { Authorization: `Bearer ${t}` } : {};
 }
 
+async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const res = await fetch(path, {
+    ...options,
+    headers: {
+      ...(options.body ? { "Content-Type": "application/json" } : {}),
+      ...authHeaders(),
+      ...options.headers,
+    },
+  });
+
+  if (!res.ok) {
+    const data = (await res.json().catch(() => null)) as { error?: string } | null;
+    throw new Error(data?.error ?? `request failed: ${res.status}`);
+  }
+
+  return res.json() as Promise<T>;
+}
+
+function saveAuth(data: AuthResponse): User {
+  authStorage.save(data.user, data.token);
+  return data.user;
+}
+
 export const api = {
-  saveToken(token: string) {
-    localStorage.setItem(TOKEN_KEY, token);
-  },
   clearToken() {
-    localStorage.removeItem(TOKEN_KEY);
+    authStorage.clear();
   },
   isLoggedIn(): boolean {
     return !!getToken();
   },
+  getStoredUser(): User | null {
+    return authStorage.getUser();
+  },
 
-  async login(name: string): Promise<User> {
-    const res = await fetch("/api/auth/login", {
+  async login(credentials: LoginCredentials): Promise<User> {
+    const data = await request<AuthResponse>("/api/auth/login", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name }),
+      body: JSON.stringify(credentials),
     });
-    if (!res.ok) throw new Error(`login failed: ${res.status}`);
-    const data = (await res.json()) as { user: User; token: string };
-    this.saveToken(data.token);
-    return data.user;
+    return saveAuth(data);
+  },
+
+  async signup(input: SignupInput): Promise<User> {
+    const data = await request<AuthResponse>("/api/auth/signup", {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+    return saveAuth(data);
   },
 
   async me(): Promise<User | null> {
-    const res = await fetch("/api/me", { headers: authHeaders() });
-    if (res.status === 401) return null;
-    if (!res.ok) throw new Error(`me failed: ${res.status}`);
-    const data = (await res.json()) as { user: User };
-    return data.user;
+    try {
+      const data = await request<{ user: User }>("/api/me");
+      authStorage.save(data.user, getToken() ?? "");
+      return data.user;
+    } catch (error) {
+      authStorage.clear();
+      if (error instanceof Error && error.message.includes("unauthorized")) return null;
+      return null;
+    }
   },
 
   async ping(): Promise<void> {
-    const res = await fetch("/api/presence/ping", {
+    await request("/api/presence/ping", {
       method: "POST",
-      headers: { "Content-Type": "application/json", ...authHeaders() },
       body: "{}",
     });
-    if (!res.ok) throw new Error(`ping failed: ${res.status}`);
   },
 
   async manual(action: "checkin" | "checkout"): Promise<void> {
-    const res = await fetch("/api/presence/manual", {
+    await request("/api/presence/manual", {
       method: "POST",
-      headers: { "Content-Type": "application/json", ...authHeaders() },
       body: JSON.stringify({ action }),
     });
-    if (!res.ok) throw new Error(`manual failed: ${res.status}`);
   },
 
   async listPresences(): Promise<PresenceView[]> {
-    const res = await fetch("/api/presence");
-    if (!res.ok) throw new Error(`list failed: ${res.status}`);
-    const data = (await res.json()) as { presences: PresenceView[] };
+    const data = await request<{ presences: PresenceView[] }>("/api/presence");
     return data.presences;
   },
 };

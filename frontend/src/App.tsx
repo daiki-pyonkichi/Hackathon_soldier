@@ -11,6 +11,9 @@ function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const storedUser = api.getStoredUser();
+    if (storedUser) setMe(storedUser);
+
     api
       .me()
       .then((u) => setMe(u))

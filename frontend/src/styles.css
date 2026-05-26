@@ -69,13 +69,58 @@ button:disabled {
   cursor: not-allowed;
 }
 
-input[type="text"] {
+input[type="text"],
+input[type="password"] {
   font: inherit;
   padding: 8px 12px;
   border-radius: 8px;
   border: 1px solid var(--border);
   background: var(--card);
   color: var(--fg);
+}
+
+.auth-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 4px;
+  margin-bottom: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+}
+
+.auth-tabs button {
+  border: 0;
+  padding: 8px;
+  background: transparent;
+}
+
+.auth-tabs button.active {
+  background: var(--card);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 12%);
+}
+
+.auth-form {
+  display: grid;
+  gap: 12px;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+}
+
+.field span {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.auth-hint {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 13px;
 }
 
 .character-grid {

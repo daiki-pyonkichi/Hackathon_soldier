@@ -2,7 +2,7 @@ import type { PresenceView } from "../types";
 
 /**
  * キャラクター描画コンポーネント（叩き台）。
- * 担当: kuremoto (デザイン) + フロントUI担当（実装）
+ * 担当: フロントUI担当（実装＋デザイン）
  *   - 在室時間に応じた状態変化（成長 or 虐待）
  *   - Canva / Lottie で作った素材に差し替え
  */

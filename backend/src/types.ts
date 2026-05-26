@@ -4,6 +4,11 @@ export interface User {
   id: string;
   name: string;
   avatarId: string;
+  createdAt: string;
+}
+
+export interface AuthUserRecord extends User {
+  passwordHash: string;
 }
 
 export interface Presence {

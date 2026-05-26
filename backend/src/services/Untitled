@@ -1,0 +1,17 @@
+git add \
+  backend/src/middleware/auth.ts \
+  backend/src/services/ \
+  backend/src/routes/auth.ts \
+  backend/src/routes/presence.ts \
+  backend/src/db/store.ts \
+  backend/src/types.ts \
+  backend/package-lock.json \
+  frontend/src/api/authStorage.ts \
+  frontend/src/api/client.ts \
+  frontend/src/pages/Login.tsx \
+  frontend/src/App.tsx \
+  frontend/src/components/Character.tsx \
+  frontend/src/styles.css \
+  frontend/src/types.ts \
+  frontend/package-lock.json \
+  README.md
