@@ -2,7 +2,7 @@ import type { PresenceView } from "../types";
 
 /**
  * キャラクター描画コンポーネント（叩き台）。
- * 担当: kuremoto (デザイン) + フロントUI担当（実装）
+ * 担当: フロントUI担当（実装＋デザイン）
  *   - 在室時間に応じた状態変化（成長 or 虐待）
  *   - Canva / Lottie で作った素材に差し替え
  */
@@ -36,8 +36,14 @@ export function Character({ p }: { p: PresenceView }) {
       </div>
       <div className="name">{p.user.name}</div>
       <div className="status">
-        {p.isPresent ? `在室 ${minutes}分` : "不在"}
-        {p.source === "manual" && p.isPresent ? "（手動）" : ""}
+        {p.isPresent ? (
+          <>
+            ON DUTY · <strong>{minutes}m</strong>
+            {p.source === "manual" ? " · MNL" : ""}
+          </>
+        ) : (
+          <>OFFLINE</>
+        )}
       </div>
     </div>
   );
