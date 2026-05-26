@@ -1,92 +1,162 @@
 import { randomUUID } from "node:crypto";
-import { hashPassword } from "../services/password.js";
-import type { AuthUserRecord, Presence, User } from "../types.js";
+import { db } from "./database.js";
+import type { AuthUserRecord, Presence, PresenceLog, User } from "../types.js";
 
-/**
- * 叩き台用のインメモリストア。
- * 本実装では SQLite / PostgreSQL / Firestore などに置き換える。
- * 担当: バックエンド係 (tsutsumi)
- */
+const userByIdStmt = db.prepare("SELECT * FROM users WHERE id = ?");
+const userByNameStmt = db.prepare(
+  "SELECT * FROM users WHERE LOWER(name) = LOWER(?)",
+);
+const allUsersStmt = db.prepare("SELECT * FROM users ORDER BY created_at");
+const userCountStmt = db.prepare("SELECT COUNT(*) AS n FROM users");
+const insertUserStmt = db.prepare(`
+  INSERT INTO users (id, name, password_hash, avatar_id, created_at)
+  VALUES (?, ?, ?, ?, ?)
+`);
+const presenceByIdStmt = db.prepare("SELECT * FROM presence WHERE user_id = ?");
+const allPresencesStmt = db.prepare("SELECT * FROM presence");
+const upsertPresenceStmt = db.prepare(`
+  INSERT INTO presence (user_id, is_present, source, entered_at, last_seen_at)
+  VALUES (?, ?, ?, ?, ?)
+  ON CONFLICT(user_id) DO UPDATE SET
+    is_present = excluded.is_present,
+    source = excluded.source,
+    entered_at = excluded.entered_at,
+    last_seen_at = excluded.last_seen_at
+`);
+const insertBlankPresenceStmt = db.prepare(`
+  INSERT OR IGNORE INTO presence (user_id, is_present, source, entered_at, last_seen_at)
+  VALUES (?, 0, 'wifi', NULL, NULL)
+`);
+const insertLogStmt = db.prepare(`
+  INSERT INTO presence_logs (id, user_id, entered_at, left_at, duration_sec)
+  VALUES (?, ?, ?, ?, ?)
+`);
+const logsByUserStmt = db.prepare(`
+  SELECT * FROM presence_logs WHERE user_id = ? ORDER BY left_at DESC
+`);
 
-const createdAt = new Date("2026-05-22T00:00:00.000Z").toISOString();
-const defaultPasswordHash = hashPassword("password123", "labsoldier-dev-seed");
 const avatarIds = ["soldier-blue", "soldier-red", "soldier-green", "soldier-yellow"];
 
-function toPublicUser(user: AuthUserRecord): User {
-  const { passwordHash: _passwordHash, ...publicUser } = user;
-  return publicUser;
-}
+type UserRow = {
+  id: string;
+  name: string;
+  avatar_id: string;
+  password_hash: string;
+  created_at: string;
+};
 
-function blankPresence(userId: string): Presence {
+type PresenceRow = {
+  user_id: string;
+  is_present: number;
+  source: string;
+  entered_at: string | null;
+  last_seen_at: string | null;
+};
+
+type PresenceLogRow = {
+  id: string;
+  user_id: string;
+  entered_at: string;
+  left_at: string;
+  duration_sec: number;
+};
+
+//ここからデータベースの命名規則をアプリケーションの命名規則に変換する関数
+function rowToUser(r: UserRow): User {
   return {
-    userId,
-    isPresent: false,
-    source: "wifi",
-    enteredAt: null,
-    lastSeenAt: null,
+    id: r.id,
+    name: r.name,
+    avatarId: r.avatar_id,
+    createdAt: r.created_at,
+  };
+}
+function rowToAuthUser(r: UserRow): AuthUserRecord {
+  return { ...rowToUser(r), passwordHash: r.password_hash };
+}
+function rowToPresence(r: PresenceRow): Presence {
+  return {
+    userId: r.user_id,
+    isPresent: r.is_present === 1,
+    source: r.source as "wifi" | "manual",
+    enteredAt: r.entered_at,
+    lastSeenAt: r.last_seen_at,
   };
 }
 
-// 初期ダミーユーザー（3人チーム想定）。開発用初期パスワードは password123。
-const users: AuthUserRecord[] = [
-  {
-    id: "u-naganawa",
-    name: "naganawa",
-    avatarId: "soldier-blue",
-    createdAt,
-    passwordHash: defaultPasswordHash,
-  },
-  {
-    id: "u-tsutsumi",
-    name: "tsutsumi",
-    avatarId: "soldier-red",
-    createdAt,
-    passwordHash: defaultPasswordHash,
-  },
-  {
-    id: "u-takebayashi",
-    name: "takebayashi",
-    avatarId: "soldier-green",
-    createdAt,
-    passwordHash: defaultPasswordHash,
-  },
-];
-
-const presences = new Map<string, Presence>(
-  users.map((u) => [u.id, blankPresence(u.id)]),
-);
-
+//データベースを操作する関数群をまとめたオブジェクト
 export const store = {
   listUsers(): User[] {
-    return users.map(toPublicUser);
-  },
+    return (allUsersStmt.all() as UserRow[]).map(rowToUser);
+  },//ユーザーをすべて取る関数
   getUser(id: string): User | undefined {
-    const user = users.find((u) => u.id === id);
-    return user ? toPublicUser(user) : undefined;
-  },
+    const row = userByIdStmt.get(id) as UserRow | undefined;
+    return row ? rowToUser(row) : undefined;
+  },//ユーザーIDからユーザー情報（公開用）を取得する関数
   getAuthUserByName(name: string): AuthUserRecord | undefined {
-    return users.find((u) => u.name.toLowerCase() === name.toLowerCase());
-  },
+    const row = userByNameStmt.get(name) as UserRow | undefined;
+    return row ? rowToAuthUser(row) : undefined;
+  },//ユーザー名から認証用ユーザー（passwordHash 付き）を取得する関数
   createUser(input: { name: string; passwordHash: string; avatarId?: string }): User {
-    const user: AuthUserRecord = {
-      id: randomUUID(),
-      name: input.name,
-      avatarId: input.avatarId ?? avatarIds[users.length % avatarIds.length],
-      createdAt: new Date().toISOString(),
-      passwordHash: input.passwordHash,
-    };
-    users.push(user);
-    presences.set(user.id, blankPresence(user.id));
-    return toPublicUser(user);
-  },
+    const count = (userCountStmt.get() as { n: number }).n;
+    const id = randomUUID();
+    const avatarId = input.avatarId ?? avatarIds[count % avatarIds.length];
+    const createdAt = new Date().toISOString();
+    insertUserStmt.run(id, input.name, input.passwordHash, avatarId, createdAt);
+    insertBlankPresenceStmt.run(id);
+    return { id, name: input.name, avatarId, createdAt };
+  },//新規ユーザーを作る関数（auth.ts の signup から呼ばれる）
   listPresences(): Presence[] {
-    return [...presences.values()];
-  },
+    return (allPresencesStmt.all() as PresenceRow[]).map(rowToPresence);
+  },//すべての在室情報を取得する関数
   getPresence(userId: string): Presence | undefined {
-    return presences.get(userId);
-  },
+    const row = presenceByIdStmt.get(userId) as PresenceRow | undefined;
+    return row ? rowToPresence(row) : undefined;
+  },//ユーザーIDから在室情報を取得する関数
   upsertPresence(p: Presence): Presence {
-    presences.set(p.userId, p);
+    upsertPresenceStmt.run(
+      p.userId,
+      p.isPresent ? 1 : 0,
+      p.source,
+      p.enteredAt,
+      p.lastSeenAt,
+    );
     return p;
-  },
+  },//在室情報を書き換える関数
+  insertPresenceLog(args: {
+    userId: string;
+    enteredAt: string;
+    leftAt: string;
+  }): PresenceLog {
+    const durationSec = Math.max(
+      0,
+      Math.floor(
+        (new Date(args.leftAt).getTime() - new Date(args.enteredAt).getTime()) /
+          1000,
+      ),
+    );
+    const id = randomUUID();
+    insertLogStmt.run(
+      id,
+      args.userId,
+      args.enteredAt,
+      args.leftAt,
+      durationSec,
+    );
+    return {
+      id,
+      userId: args.userId,
+      enteredAt: args.enteredAt,
+      leftAt: args.leftAt,
+      durationSec,
+    };
+  },//UserID,入室時間、退室時間をもとに在室履歴を追加する関数
+  listPresenceLogsByUser(userId: string): PresenceLog[] {
+    return (logsByUserStmt.all(userId) as PresenceLogRow[]).map((r) => ({
+      id: r.id,
+      userId: r.user_id,
+      enteredAt: r.entered_at,
+      leftAt: r.left_at,
+      durationSec: r.duration_sec,
+    }));
+  },//ユーザーIDから在室履歴を取得する関数
 };

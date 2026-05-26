@@ -1,4 +1,5 @@
 export type PresenceSource = "wifi" | "manual";
+export type PresenceStatus = "present" | "unknown" | "absent";
 
 export interface User {
   id: string;
@@ -19,8 +20,20 @@ export interface Presence {
   lastSeenAt: string | null;
 }
 
-export interface PresenceView extends Presence {
-  user: User;
-  // 在室時間(秒)。キャラの状態変化計算用
+export interface PresenceView {
+  userId: string;
+  name: string;
+  avatarId: string;
+  status: PresenceStatus;
+  lastSeenAt: string | null;
+  elapsedMin: number | null;
+  enteredAt: string | null;
+}//フロントへ送るやつ
+
+export interface PresenceLog {
+  id: string;
+  userId: string;
+  enteredAt: string;
+  leftAt: string;
   durationSec: number;
 }

@@ -31,3 +31,6 @@ yarn-error.log*
 # SQLite (if使うなら)
 *.sqlite
 *.db
+*.db-shm
+*.db-wal
+backend/data/
