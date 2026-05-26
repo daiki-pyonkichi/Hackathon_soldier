@@ -16,8 +16,8 @@ const FACE: Record<string, string> = {
 };
 
 // 在室時間で見た目が変わる仮ロジック（成長案 vs 虐待案 はチームで決める）
-function stageEmoji(durationSec: number, baseFace: string): string {
-  const hours = durationSec / 3600;
+function stageEmoji(minutes: number, baseFace: string): string {
+  const hours = minutes / 60;
   if (hours < 1) return baseFace;
   if (hours < 3) return `${baseFace}💪`; // 元気
   if (hours < 6) return `${baseFace}😅`; // 疲れ気味
@@ -25,22 +25,25 @@ function stageEmoji(durationSec: number, baseFace: string): string {
 }
 
 export function Character({ p }: { p: PresenceView }) {
-  const base = FACE[p.user.avatarId] ?? "🙂";
-  const face = p.isPresent ? stageEmoji(p.durationSec, base) : base;
-  const minutes = Math.floor(p.durationSec / 60);
+  const base = FACE[p.avatarId] ?? "🙂";
+  const minutes = p.elapsedMin ?? 0;
+  const isPresent = p.status === "present";
+  const face = isPresent ? stageEmoji(minutes, base) : base;
+  const stateClass = p.status === "present" ? "present" : "absent";
 
   return (
-    <div className={`character ${p.isPresent ? "present" : "absent"}`}>
-      <div className="avatar" aria-label={p.user.name}>
+    <div className={`character ${stateClass}`}>
+      <div className="avatar" aria-label={p.name}>
         {face}
       </div>
-      <div className="name">{p.user.name}</div>
+      <div className="name">{p.name}</div>
       <div className="status">
-        {p.isPresent ? (
+        {isPresent ? (
           <>
             ON DUTY · <strong>{minutes}m</strong>
-            {p.source === "manual" ? " · MNL" : ""}
           </>
+        ) : p.status === "unknown" ? (
+          <>UNKNOWN</>
         ) : (
           <>OFFLINE</>
         )}

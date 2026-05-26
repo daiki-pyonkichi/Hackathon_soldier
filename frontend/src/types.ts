@@ -17,14 +17,14 @@ export interface AuthResponse {
   token: string;
 }
 
-export type PresenceSource = "wifi" | "manual";
+export type PresenceStatus = "present" | "absent" | "unknown";
 
 export interface PresenceView {
   userId: string;
-  isPresent: boolean;
-  source: PresenceSource;
+  name: string;
+  avatarId: string;
+  status: PresenceStatus;
   enteredAt: string | null;
   lastSeenAt: string | null;
-  durationSec: number;
-  user: User;
+  elapsedMin: number | null;
 }

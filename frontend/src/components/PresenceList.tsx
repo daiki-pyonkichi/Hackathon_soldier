@@ -33,7 +33,7 @@ export function PresenceList({ refreshMs = 15_000 }: { refreshMs?: number }) {
     };
   }, [refreshMs]);
 
-  const presentCount = list.filter((p) => p.isPresent).length;
+  const presentCount = list.filter((p) => p.status === "present").length;
 
   return (
     <section className="card">
