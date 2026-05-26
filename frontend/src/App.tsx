@@ -1,14 +1,16 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { api } from "./api/client";
 import { usePresencePing } from "./hooks/usePresencePing";
 import { PresenceList } from "./components/PresenceList";
 import { ManualCheckin } from "./components/ManualCheckin";
 import { Login } from "./pages/Login";
-import type { User } from "./types";
+import type { PresenceView, User } from "./types";
 
 function App() {
   const [me, setMe] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [presences, setPresences] = useState<PresenceView[]>([]);
+  const [presenceError, setPresenceError] = useState<string | null>(null);
 
   useEffect(() => {
     const storedUser = api.getStoredUser();
@@ -20,11 +22,33 @@ function App() {
       .finally(() => setLoading(false));
   }, []);
 
-  usePresencePing(me !== null);
+  const fetchPresences = useCallback(async () => {
+    try {
+      const data = await api.listPresences();
+      setPresences(data);
+      setPresenceError(null);
+    } catch (e) {
+      setPresenceError(String(e));
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!me) return;
+    fetchPresences();
+    const id = setInterval(fetchPresences, 15_000);
+    return () => clearInterval(id);
+  }, [me, fetchPresences]);
+
+  const myPresence = me ? presences.find((p) => p.userId === me.id) : null;
+  const manualOff = myPresence?.manualOff ?? false;
+
+  // ログイン中かつ退室中でない時のみ ping を発信
+  usePresencePing(me !== null && !manualOff);
 
   const logout = () => {
     api.clearToken();
     setMe(null);
+    setPresences([]);
   };
 
   if (loading) {
@@ -53,8 +77,8 @@ function App() {
           </button>
         </div>
       </header>
-      <PresenceList />
-      <ManualCheckin />
+      <PresenceList presences={presences} error={presenceError} />
+      <ManualCheckin manualOff={manualOff} onChanged={fetchPresences} />
     </>
   );
 }

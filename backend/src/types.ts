@@ -18,6 +18,7 @@ export interface Presence {
   source: PresenceSource;
   enteredAt: string | null; // ISO8601
   lastSeenAt: string | null;
+  manualOff: boolean; // 明示的「退室中」フラグ。true の間は ping を無視する
 }
 
 export interface PresenceView {
@@ -28,6 +29,7 @@ export interface PresenceView {
   lastSeenAt: string | null;
   elapsedMin: number | null;
   enteredAt: string | null;
+  manualOff: boolean;
 }//フロントへ送るやつ
 
 export interface PresenceLog {

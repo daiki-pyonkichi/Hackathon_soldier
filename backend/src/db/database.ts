@@ -26,6 +26,7 @@ db.exec(`
     source TEXT NOT NULL DEFAULT 'wifi',
     entered_at TEXT,
     last_seen_at TEXT,
+    manual_off INTEGER NOT NULL DEFAULT 0,
     FOREIGN KEY (user_id) REFERENCES users(id)
   );
 
@@ -49,6 +50,12 @@ db.exec(`
   //left_at 退室時間
   //duration_sec 在室時間（秒）
 
+
+// 既存DBに manual_off カラムが無ければ追加（in-place マイグレーション）
+const presenceCols = db.pragma("table_info(presence)") as Array<{ name: string }>;
+if (!presenceCols.some((c) => c.name === "manual_off")) {
+  db.exec(`ALTER TABLE presence ADD COLUMN manual_off INTEGER NOT NULL DEFAULT 0`);
+}
 
 // 開発用初期パスワードは password123（固定 salt でハッシュ化、毎起動で同じ値になる）
 const seedCreatedAt = new Date("2026-05-22T00:00:00.000Z").toISOString();

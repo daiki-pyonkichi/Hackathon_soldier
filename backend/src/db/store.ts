@@ -15,18 +15,22 @@ const insertUserStmt = db.prepare(`
 const presenceByIdStmt = db.prepare("SELECT * FROM presence WHERE user_id = ?");
 const allPresencesStmt = db.prepare("SELECT * FROM presence");
 const upsertPresenceStmt = db.prepare(`
-  INSERT INTO presence (user_id, is_present, source, entered_at, last_seen_at)
-  VALUES (?, ?, ?, ?, ?)
+  INSERT INTO presence (user_id, is_present, source, entered_at, last_seen_at, manual_off)
+  VALUES (?, ?, ?, ?, ?, ?)
   ON CONFLICT(user_id) DO UPDATE SET
     is_present = excluded.is_present,
     source = excluded.source,
     entered_at = excluded.entered_at,
-    last_seen_at = excluded.last_seen_at
+    last_seen_at = excluded.last_seen_at,
+    manual_off = excluded.manual_off
 `);
 const insertBlankPresenceStmt = db.prepare(`
-  INSERT OR IGNORE INTO presence (user_id, is_present, source, entered_at, last_seen_at)
-  VALUES (?, 0, 'wifi', NULL, NULL)
+  INSERT OR IGNORE INTO presence (user_id, is_present, source, entered_at, last_seen_at, manual_off)
+  VALUES (?, 0, 'wifi', NULL, NULL, 0)
 `);
+const setManualOffStmt = db.prepare(
+  `UPDATE presence SET manual_off = ? WHERE user_id = ?`,
+);
 const insertLogStmt = db.prepare(`
   INSERT INTO presence_logs (id, user_id, entered_at, left_at, duration_sec)
   VALUES (?, ?, ?, ?, ?)
@@ -51,6 +55,7 @@ type PresenceRow = {
   source: string;
   entered_at: string | null;
   last_seen_at: string | null;
+  manual_off: number;
 };
 
 type PresenceLogRow = {
@@ -80,6 +85,7 @@ function rowToPresence(r: PresenceRow): Presence {
     source: r.source as "wifi" | "manual",
     enteredAt: r.entered_at,
     lastSeenAt: r.last_seen_at,
+    manualOff: r.manual_off === 1,
   };
 }
 
@@ -119,9 +125,13 @@ export const store = {
       p.source,
       p.enteredAt,
       p.lastSeenAt,
+      p.manualOff ? 1 : 0,
     );
     return p;
   },//在室情報を書き換える関数
+  setManualOff(userId: string, value: boolean): void {
+    setManualOffStmt.run(value ? 1 : 0, userId);
+  },//退室フラグを切り替える関数
   insertPresenceLog(args: {
     userId: string;
     enteredAt: string;

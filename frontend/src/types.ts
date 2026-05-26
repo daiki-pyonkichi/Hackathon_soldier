@@ -27,4 +27,5 @@ export interface PresenceView {
   enteredAt: string | null;
   lastSeenAt: string | null;
   elapsedMin: number | null;
+  manualOff: boolean;
 }

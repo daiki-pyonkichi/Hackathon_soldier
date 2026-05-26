@@ -85,11 +85,12 @@ export const api = {
     });
   },
 
-  async manual(action: "checkin" | "checkout"): Promise<void> {
-    await request("/api/presence/manual", {
-      method: "POST",
-      body: JSON.stringify({ action }),
-    });
+  async leave(): Promise<void> {
+    await request("/api/presence/leave", { method: "POST", body: "{}" });
+  },
+
+  async resume(): Promise<void> {
+    await request("/api/presence/resume", { method: "POST", body: "{}" });
   },
 
   async listPresences(): Promise<PresenceView[]> {
