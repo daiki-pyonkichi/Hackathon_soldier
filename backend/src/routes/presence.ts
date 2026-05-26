@@ -7,8 +7,9 @@ import type { Presence, PresenceView } from "../types.js";
 
 /**
  * 在室判定ルート。
- * 担当: バックエンド係 (tsutsumi)
- *   - DB 永続化、認証連携、タイムアウト処理（数分pingが無ければ自動退室）
+ * - 自動判定: POST /ping (Wi-Fi IP)
+ * - 明示的な退室: POST /leave （manualOff=true、以降の ping は無視される）
+ * - 退室解除: POST /resume （次の ping から自動判定再開）
  */
 export const presenceRouter = Router();
 
@@ -18,9 +19,15 @@ presenceRouter.post("/ping", (req, res) => {
   if (!user) return res.status(401).json({ error: "unauthorized" });
 
   const ip = getClientIp(req);
+  const prev = store.getPresence(user.id);
+
+  // 明示的に退室中なら、自動 ping では何も更新しない
+  if (prev?.manualOff) {
+    return res.json({ ...prev, ip, skipped: true });
+  }
+
   const present = isLabIp(ip);
   const now = new Date().toISOString();
-  const prev = store.getPresence(user.id);
 
   // 在室→不在に切り替わった瞬間にセッションをログ化
   if (!present && prev?.isPresent && prev.enteredAt) {
@@ -41,24 +48,22 @@ presenceRouter.post("/ping", (req, res) => {
         : now
       : null,
     lastSeenAt: now,
+    manualOff: false,
   });
 
   return res.json({ ...updated, ip });
 });
 
-// POST /api/presence/manual : 手動 checkin/checkout
-presenceRouter.post("/manual", (req, res) => {
+// POST /api/presence/leave : 明示的に退室。manualOff=true を立てる
+presenceRouter.post("/leave", (req, res) => {
   const user = getAuthenticatedUser(req);
   if (!user) return res.status(401).json({ error: "unauthorized" });
-  const action = String(req.body?.action ?? "");
-  if (action !== "checkin" && action !== "checkout") {
-    return res.status(400).json({ error: "action must be checkin or checkout" });
-  }
+
   const now = new Date().toISOString();
   const prev = store.getPresence(user.id);
 
-  // 手動チェックアウト時にセッションをログ化
-  if (action === "checkout" && prev?.isPresent && prev.enteredAt) {
+  // 在室中なら退室セッションをログ化
+  if (prev?.isPresent && prev.enteredAt) {
     store.insertPresenceLog({
       userId: user.id,
       enteredAt: prev.enteredAt,
@@ -68,16 +73,22 @@ presenceRouter.post("/manual", (req, res) => {
 
   const updated = store.upsertPresence({
     userId: user.id,
-    isPresent: action === "checkin",
+    isPresent: false,
     source: "manual",
-    enteredAt:
-      action === "checkin"
-        ? prev?.isPresent && prev.enteredAt
-          ? prev.enteredAt
-          : now
-        : null,
+    enteredAt: null,
     lastSeenAt: now,
+    manualOff: true,
   });
+  return res.json(updated);
+});
+
+// POST /api/presence/resume : 退室フラグを解除。以降の ping で自動判定再開
+presenceRouter.post("/resume", (req, res) => {
+  const user = getAuthenticatedUser(req);
+  if (!user) return res.status(401).json({ error: "unauthorized" });
+
+  store.setManualOff(user.id, false);
+  const updated = store.getPresence(user.id);
   return res.json(updated);
 });
 
@@ -95,6 +106,7 @@ presenceRouter.get("/", (req, res) => {
       source: "wifi",
       enteredAt: null,
       lastSeenAt: null,
+      manualOff: false,
     };
     return {
       userId: u.id,
@@ -102,8 +114,9 @@ presenceRouter.get("/", (req, res) => {
       avatarId: u.avatarId,
       status: judgeStatus(p),
       lastSeenAt: p.lastSeenAt,
-      elapsedMin: elapsedMinutes(p.lastSeenAt),
+      elapsedMin: elapsedMinutes(p.enteredAt),
       enteredAt: p.enteredAt,
+      manualOff: p.manualOff,
     };
   });
   return res.json({ presences: view });

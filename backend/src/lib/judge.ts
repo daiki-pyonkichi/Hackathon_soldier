@@ -6,9 +6,8 @@ const PRESENT_THRESHOLD_MIN = 5;
 const UNKNOWN_THRESHOLD_MIN = 30;
 
 export function judgeStatus(p: Presence): PresenceStatus {
-  //削ってもいいかも
-  if (p.source === "manual" && p.isPresent) return "present";//マニュアルならpingがなくても在室扱い
-  if (p.source === "manual" && !p.isPresent) return "absent";//マニュアルでチェックアウト済みなら即不在
+  // 明示的な退室中フラグは最優先（ping を無視して absent 固定）
+  if (p.manualOff) return "absent";
 
   if (!p.lastSeenAt) return "absent";//lastSeenAtがないなら不在(初期設定)
 
