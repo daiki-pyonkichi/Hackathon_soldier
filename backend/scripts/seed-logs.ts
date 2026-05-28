@@ -20,9 +20,6 @@ const USERS = [
 const TODAY = new Date();
 TODAY.setHours(0, 0, 0, 0);
 
-// JST offset: UTC+9
-const JST = 9 * 60 * 60 * 1000;
-
 function jstDate(daysAgo: number, hour: number, minute = 0): Date {
   const d = new Date(TODAY.getTime() - daysAgo * 24 * 60 * 60 * 1000);
   d.setHours(hour, minute, 0, 0);
@@ -67,8 +64,24 @@ for (let day = 1; day <= 28; day++) {
   }
 }
 
-// 既存のシードデータを削除してから投入
-db.exec(`DELETE FROM presence_logs`);
+// presence_logs にすでにデータがある場合は安全のため何もせず終了する。
+// 強制的に再投入したい時は --force フラグを付ける:
+//   npx tsx scripts/seed-logs.ts --force
+const force = process.argv.includes("--force");
+const existing = (db.prepare("SELECT COUNT(*) AS n FROM presence_logs").get() as { n: number }).n;
+
+if (existing > 0 && !force) {
+  console.warn(`⚠️  presence_logs にすでに ${existing} 件のデータがあります。`);
+  console.warn(`   ダミーデータを上書き投入したい場合は --force を付けて再実行してください:`);
+  console.warn(`   npx tsx scripts/seed-logs.ts --force`);
+  db.close();
+  process.exit(0);
+}
+
+if (force && existing > 0) {
+  console.warn(`⚠️  --force 指定: 既存の ${existing} 件を削除して再投入します。`);
+  db.exec(`DELETE FROM presence_logs`);
+}
 
 const insert = db.prepare(`
   INSERT INTO presence_logs (id, user_id, entered_at, left_at, duration_sec)
