@@ -1,8 +1,7 @@
 # LabSoldier (Hackathon_soldier)
 
 研究室にいるかどうかをキャラクターの挙動で共有する PWA アプリ。
-サポーターズ主催のハッカソン製作物。jidjfijidjfsjifjdijsfi
-
+サポーターズ主催のハッカソン製作物。
 
 ## 構成
 
