@@ -4,27 +4,32 @@ import { getAuthenticatedUser } from "../middleware/auth.js";
 
 export const logsRouter = Router();
 
-// GET /api/logs?userId=&date=YYYY-MM-DD
-// userId なし → 全員、date なし → 全期間
+// GET /api/logs?userId=&from=YYYY-MM-DD&to=YYYY-MM-DD
+// userId なし → 全員、from/to 両方なし → 全期間
+// セッションの一部でも [from, to+1日) と重なれば対象
 logsRouter.get("/", (req, res) => {
   const user = getAuthenticatedUser(req);
   if (!user) return res.status(401).json({ error: "unauthorized" });
 
   const userId = typeof req.query.userId === "string" ? req.query.userId : undefined;
-  const dateStr = typeof req.query.date === "string" ? req.query.date : undefined;
+  const fromStr = typeof req.query.from === "string" ? req.query.from : undefined;
+  const toStr = typeof req.query.to === "string" ? req.query.to : undefined;
 
   let dateUtcStart: string | undefined;
   let dateUtcEnd: string | undefined;
 
-  if (dateStr) {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
-      return res.status(400).json({ error: "date must be YYYY-MM-DD" });
-    }
-    // YYYY-MM-DD 00:00 JST = YYYY-MM-(DD-1) 15:00 UTC
-    const jst = new Date(`${dateStr}T00:00:00+09:00`);
-    const jstNext = new Date(jst.getTime() + 24 * 60 * 60 * 1000);
-    dateUtcStart = jst.toISOString();
-    dateUtcEnd = jstNext.toISOString();
+  if (fromStr || toStr) {
+    const ymd = /^\d{4}-\d{2}-\d{2}$/;
+    if (fromStr && !ymd.test(fromStr)) return res.status(400).json({ error: "from must be YYYY-MM-DD" });
+    if (toStr && !ymd.test(toStr)) return res.status(400).json({ error: "to must be YYYY-MM-DD" });
+    // 片方しか指定されていなければ同じ日付として扱う
+    const start = fromStr ?? toStr!;
+    const end = toStr ?? fromStr!;
+    const jstStart = new Date(`${start}T00:00:00+09:00`);
+    const jstEnd = new Date(`${end}T00:00:00+09:00`);
+    jstEnd.setDate(jstEnd.getDate() + 1); // 終端は翌日0時
+    dateUtcStart = jstStart.toISOString();
+    dateUtcEnd = jstEnd.toISOString();
   }
 
   const logs = store.listLogs({ userId, dateUtcStart, dateUtcEnd });
