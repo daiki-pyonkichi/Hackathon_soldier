@@ -38,6 +38,59 @@ const insertLogStmt = db.prepare(`
 const logsByUserStmt = db.prepare(`
   SELECT * FROM presence_logs WHERE user_id = ? ORDER BY left_at DESC
 `);
+const logsAllStmt = db.prepare(`
+  SELECT
+    l.id, l.user_id, l.entered_at, l.left_at, l.duration_sec,
+    u.name, u.avatar_id
+  FROM presence_logs l
+  JOIN users u ON u.id = l.user_id
+  ORDER BY l.left_at DESC
+`);
+const logsByUserIdStmt = db.prepare(`
+  SELECT
+    l.id, l.user_id, l.entered_at, l.left_at, l.duration_sec,
+    u.name, u.avatar_id
+  FROM presence_logs l
+  JOIN users u ON u.id = l.user_id
+  WHERE l.user_id = ?
+  ORDER BY l.left_at DESC
+`);
+const logsByDateStmt = db.prepare(`
+  SELECT
+    l.id, l.user_id, l.entered_at, l.left_at, l.duration_sec,
+    u.name, u.avatar_id
+  FROM presence_logs l
+  JOIN users u ON u.id = l.user_id
+  WHERE l.entered_at < ? AND l.left_at > ?
+  ORDER BY l.left_at DESC
+`);
+const logsByUserAndDateStmt = db.prepare(`
+  SELECT
+    l.id, l.user_id, l.entered_at, l.left_at, l.duration_sec,
+    u.name, u.avatar_id
+  FROM presence_logs l
+  JOIN users u ON u.id = l.user_id
+  WHERE l.user_id = ? AND l.entered_at < ? AND l.left_at > ?
+  ORDER BY l.left_at DESC
+`);
+const dailyStatsByUserStmt = db.prepare(`
+  SELECT entered_at, left_at, duration_sec
+  FROM presence_logs
+  WHERE user_id = ? AND left_at >= ? AND entered_at < ?
+  ORDER BY entered_at ASC
+`);
+const rankingStmt = db.prepare(`
+  SELECT
+    u.id          AS user_id,
+    u.name        AS name,
+    u.avatar_id   AS avatar_id,
+    COALESCE(SUM(l.duration_sec), 0) AS total_sec
+  FROM users u
+  LEFT JOIN presence_logs l
+    ON u.id = l.user_id AND l.left_at >= ?
+  GROUP BY u.id
+  ORDER BY total_sec DESC
+`);
 
 const avatarIds = ["soldier-blue", "soldier-red", "soldier-green", "soldier-yellow"];
 
@@ -169,4 +222,44 @@ export const store = {
       durationSec: r.duration_sec,
     }));
   },//ユーザーIDから在室履歴を取得する関数
+
+  listLogs(args: { userId?: string; dateUtcStart?: string; dateUtcEnd?: string }) {
+    type Row = {
+      id: string; user_id: string; entered_at: string; left_at: string;
+      duration_sec: number; name: string; avatar_id: string;
+    };
+    const toLog = (r: Row) => ({
+      id: r.id, userId: r.user_id, enteredAt: r.entered_at,
+      leftAt: r.left_at, durationSec: r.duration_sec,
+      name: r.name, avatarId: r.avatar_id,
+    });
+    const { userId, dateUtcStart, dateUtcEnd } = args;
+    if (userId && dateUtcStart && dateUtcEnd) {
+      return (logsByUserAndDateStmt.all(userId, dateUtcEnd, dateUtcStart) as Row[]).map(toLog);
+    }
+    if (dateUtcStart && dateUtcEnd) {
+      return (logsByDateStmt.all(dateUtcEnd, dateUtcStart) as Row[]).map(toLog);
+    }
+    if (userId) {
+      return (logsByUserIdStmt.all(userId) as Row[]).map(toLog);
+    }
+    return (logsAllStmt.all() as Row[]).map(toLog);
+  },//フィルタ条件に応じた在室ログ一覧を返す
+
+  getDailyStats(userId: string, fromUtc: string, toUtc: string) {
+    type Row = { entered_at: string; left_at: string; duration_sec: number };
+    return (dailyStatsByUserStmt.all(userId, fromUtc, toUtc) as Row[]).map((r) => ({
+      enteredAt: r.entered_at, leftAt: r.left_at, durationSec: r.duration_sec,
+    }));
+  },//ユーザーの日別在室合計を計算するための生セッションを返す
+
+  getRanking(periodStartIso: string): { userId: string; name: string; avatarId: string; totalSec: number }[] {
+    type Row = { user_id: string; name: string; avatar_id: string; total_sec: number };
+    return (rankingStmt.all(periodStartIso) as Row[]).map((r) => ({
+      userId: r.user_id,
+      name: r.name,
+      avatarId: r.avatar_id,
+      totalSec: r.total_sec,
+    }));
+  },//期間内の在室合計秒数ランキングを返す
 };

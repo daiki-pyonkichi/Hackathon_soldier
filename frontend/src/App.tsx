@@ -4,13 +4,18 @@ import { usePresencePing } from "./hooks/usePresencePing";
 import { PresenceList } from "./components/PresenceList";
 import { ManualCheckin } from "./components/ManualCheckin";
 import { Login } from "./pages/Login";
+import { Ranking } from "./pages/Ranking";
+import { Logs } from "./pages/Logs";
 import type { PresenceView, User } from "./types";
+
+type Tab = "home" | "ranking" | "logs";
 
 function App() {
   const [me, setMe] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [presences, setPresences] = useState<PresenceView[]>([]);
   const [presenceError, setPresenceError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<Tab>("home");
 
   useEffect(() => {
     const storedUser = api.getStoredUser();
@@ -77,8 +82,44 @@ function App() {
           </button>
         </div>
       </header>
-      <PresenceList presences={presences} error={presenceError} />
-      <ManualCheckin manualOff={manualOff} onChanged={fetchPresences} />
+      <div className="nav-tabs">
+        <button
+          className={activeTab === "home" ? "active" : ""}
+          onClick={() => setActiveTab("home")}
+        >
+          Home
+        </button>
+        <button
+          className={activeTab === "ranking" ? "active" : ""}
+          onClick={() => setActiveTab("ranking")}
+        >
+          Ranking
+        </button>
+        <button
+          className={activeTab === "logs" ? "active" : ""}
+          onClick={() => setActiveTab("logs")}
+        >
+          Logs
+        </button>
+      </div>
+
+      {activeTab === "home" && (
+        <>
+          <PresenceList presences={presences} error={presenceError} />
+          <ManualCheckin manualOff={manualOff} onChanged={fetchPresences} />
+        </>
+      )}
+      {activeTab === "ranking" && <Ranking />}
+      {activeTab === "logs" && (
+        <Logs
+          users={presences.map((p) => ({
+            id: p.userId,
+            name: p.name,
+            avatarId: p.avatarId,
+            createdAt: "",
+          }))}
+        />
+      )}
     </>
   );
 }

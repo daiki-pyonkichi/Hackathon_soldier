@@ -614,6 +614,219 @@ input::placeholder {
 .card:nth-child(3) { animation-delay: 0.16s; }
 
 /* ============================================================
+   Tab navigation (ホーム / ランキング)
+   ============================================================ */
+
+.nav-tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 24px;
+  border: 1px solid var(--border);
+  width: fit-content;
+}
+
+.nav-tabs button {
+  border: 0;
+  border-right: 1px solid var(--border);
+  padding: 10px 20px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  letter-spacing: 0.16em;
+}
+
+.nav-tabs button:last-child {
+  border-right: 0;
+}
+
+.nav-tabs button.active {
+  background: var(--olive);
+  color: #0a0d12;
+  font-weight: 700;
+}
+
+/* ============================================================
+   Ranking
+   ============================================================ */
+
+.ranking-tabs {
+  display: flex;
+  gap: 0;
+  border: 1px solid var(--border);
+}
+
+.ranking-tabs button {
+  border: 0;
+  border-right: 1px solid var(--border);
+  padding: 7px 14px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+}
+
+.ranking-tabs button:last-child {
+  border-right: 0;
+}
+
+.ranking-tabs button.active {
+  background: var(--olive);
+  color: #0a0d12;
+  font-weight: 700;
+}
+
+.ranking-list {
+  display: grid;
+  gap: 10px;
+}
+
+.ranking-row {
+  display: grid;
+  grid-template-columns: 36px 40px 1fr 2fr 80px;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  transition: border-color 0.2s ease;
+}
+
+.ranking-row:hover {
+  border-color: var(--border-strong);
+}
+
+.ranking-row__rank {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 18px;
+  text-align: center;
+}
+
+.ranking-row__avatar {
+  font-size: 28px;
+  text-align: center;
+}
+
+.ranking-row__name {
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: 0.04em;
+}
+
+.ranking-row__bar-wrap {
+  height: 6px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.ranking-row__bar {
+  height: 100%;
+  background: var(--olive);
+  transition: width 0.6s ease;
+  box-shadow: 0 0 8px rgba(194, 207, 58, 0.4);
+}
+
+.ranking-row__time {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  color: var(--olive);
+  text-align: right;
+}
+
+/* ============================================================
+   Logs page
+   ============================================================ */
+
+.user-picker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.user-picker__label {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-right: 6px;
+}
+
+.user-chip {
+  padding: 6px 12px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: none;
+}
+
+.user-chip.active {
+  background: var(--olive);
+  color: #0a0d12;
+  border-color: var(--olive);
+  font-weight: 700;
+}
+
+.user-chip:disabled {
+  opacity: 0.3;
+}
+
+.chart-wrap {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  padding: 16px 8px 8px;
+}
+
+.log-list {
+  display: grid;
+  gap: 6px;
+}
+
+.log-row {
+  display: grid;
+  grid-template-columns: 32px 100px 1fr 80px;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 12px;
+  transition: border-color 0.2s ease;
+}
+
+.log-row:hover {
+  border-color: var(--border-strong);
+}
+
+.log-row__avatar {
+  font-size: 22px;
+  text-align: center;
+}
+
+.log-row__name {
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: 0.06em;
+}
+
+.log-row__time {
+  color: var(--muted);
+  letter-spacing: 0.04em;
+}
+
+.log-row__duration {
+  color: var(--olive);
+  text-align: right;
+  letter-spacing: 0.06em;
+}
+
+/* ============================================================
    Mobile
    ============================================================ */
 

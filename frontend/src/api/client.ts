@@ -1,5 +1,16 @@
 import { authStorage } from "./authStorage";
-import type { AuthResponse, LoginCredentials, PresenceView, SignupInput, User } from "../types";
+import type {
+  AuthResponse,
+  LoginCredentials,
+  PresenceLogEntry,
+  PresenceView,
+  RankingEntry,
+  RankingPeriod,
+  SignupInput,
+  StatsBucket,
+  StatsPoint,
+  User,
+} from "../types";
 
 /**
  * API クライアント。
@@ -96,5 +107,39 @@ export const api = {
   async listPresences(): Promise<PresenceView[]> {
     const data = await request<{ presences: PresenceView[] }>("/api/presence");
     return data.presences;
+  },
+
+  async getRanking(period: RankingPeriod): Promise<RankingEntry[]> {
+    const data = await request<{ period: string; ranking: RankingEntry[] }>(
+      `/api/stats/ranking?period=${period}`
+    );
+    return data.ranking;
+  },
+
+  async listLogs(filters: { userId?: string; date?: string } = {}): Promise<PresenceLogEntry[]> {
+    const qs = new URLSearchParams();
+    if (filters.userId) qs.set("userId", filters.userId);
+    if (filters.date) qs.set("date", filters.date);
+    const suffix = qs.toString() ? `?${qs}` : "";
+    const data = await request<{ logs: PresenceLogEntry[] }>(`/api/logs${suffix}`);
+    return data.logs;
+  },
+
+  async getStats(args: {
+    userId: string;
+    from: string;
+    to: string;
+    bucket: StatsBucket;
+  }): Promise<StatsPoint[]> {
+    const qs = new URLSearchParams({
+      userId: args.userId,
+      from: args.from,
+      to: args.to,
+      bucket: args.bucket,
+    });
+    const data = await request<{ userId: string; bucket: string; stats: StatsPoint[] }>(
+      `/api/logs/stats?${qs}`
+    );
+    return data.stats;
   },
 };
