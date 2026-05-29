@@ -448,6 +448,51 @@ input::placeholder {
   font-size: 13px;
 }
 
+/* アバター選択 */
+.avatar-picker {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.avatar-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 4px;
+  border: 1px solid var(--border);
+  background: var(--bg-2);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.avatar-option:hover {
+  border-color: var(--border-strong);
+}
+
+.avatar-option.active {
+  border-color: var(--olive);
+  background: rgba(194, 207, 58, 0.1);
+  box-shadow: 0 0 0 1px var(--olive) inset;
+}
+
+.avatar-option__face {
+  font-size: 28px;
+  line-height: 1;
+}
+
+.avatar-option__label {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.avatar-option.active .avatar-option__label {
+  color: var(--olive);
+}
+
 .auth-hint {
   margin: 18px 0 0;
   padding: 10px 12px;
@@ -524,6 +569,13 @@ input::placeholder {
 .character .avatar {
   font-size: 52px;
   line-height: 1;
+}
+
+.character .avatar-img {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  image-rendering: auto;
 }
 
 .character .name {
