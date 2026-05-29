@@ -1,40 +1,54 @@
+import { useEffect, useState } from "react";
 import type { PresenceView } from "../types";
+import {
+  AVATAR_GIFS_READY,
+  avatarEmoji,
+  avatarGifSrc,
+  avatarStage,
+} from "../avatars";
 
 /**
- * キャラクター描画コンポーネント（叩き台）。
- * 担当: フロントUI担当（実装＋デザイン）
- *   - 在室時間に応じた状態変化（成長 or 虐待）
- *   - Canva / Lottie で作った素材に差し替え
+ * キャラクター描画コンポーネント。
+ * 在室経過時間に応じて段階(1..6)が変化する。
+ * GIF 素材が揃うまでは絵文字でフォールバック表示する。
  */
 
-// 簡易: avatarId に紐づく絵文字。後でちゃんとした素材に置き換える
-const FACE: Record<string, string> = {
-  "soldier-blue": "🪖",
-  "soldier-red": "👮",
-  "soldier-green": "🧑‍🚀",
-  "soldier-yellow": "🧙",
-};
-
-// 在室時間で見た目が変わる仮ロジック（成長案 vs 虐待案 はチームで決める）
-function stageEmoji(minutes: number, baseFace: string): string {
-  const hours = minutes / 60;
-  if (hours < 1) return baseFace;
-  if (hours < 3) return `${baseFace}💪`; // 元気
-  if (hours < 6) return `${baseFace}😅`; // 疲れ気味
-  return `${baseFace}💀`; // やつれ
+// 段階に応じた絵文字サフィックス（GIF が無いときの簡易表現）
+function stageSuffix(stage: number): string {
+  if (stage <= 2) return "";
+  if (stage === 3) return "💪";
+  if (stage === 4) return "😅";
+  if (stage === 5) return "😩";
+  return "💀";
 }
 
 export function Character({ p }: { p: PresenceView }) {
-  const base = FACE[p.avatarId] ?? "🙂";
   const minutes = p.elapsedMin ?? 0;
   const isPresent = p.status === "present";
-  const face = isPresent ? stageEmoji(minutes, base) : base;
-  const stateClass = p.status === "present" ? "present" : "absent";
+  const stage = isPresent ? avatarStage(minutes) : 1;
+  const stateClass = isPresent ? "present" : "absent";
+
+  const emoji = avatarEmoji(p.avatarId);
+  const gifSrc = avatarGifSrc(p.avatarId, stage);
+
+  // GIF 読み込み失敗時は絵文字にフォールバック。stage/avatar が変わるたびに再試行。
+  const [gifFailed, setGifFailed] = useState(false);
+  useEffect(() => setGifFailed(false), [gifSrc]);
+  const showGif = AVATAR_GIFS_READY && !gifFailed;
 
   return (
     <div className={`character ${stateClass}`}>
       <div className="avatar" aria-label={p.name}>
-        {face}
+        {showGif ? (
+          <img
+            className="avatar-img"
+            src={gifSrc}
+            alt={p.name}
+            onError={() => setGifFailed(true)}
+          />
+        ) : (
+          `${emoji}${isPresent ? stageSuffix(stage) : ""}`
+        )}
       </div>
       <div className="name">{p.name}</div>
       <div className="status">
