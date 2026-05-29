@@ -30,6 +30,8 @@ export interface PresenceView {
   elapsedMin: number | null;
   enteredAt: string | null;
   manualOff: boolean;
+  hp: number;        // 0-100 のHP値。過去ログを再生して算出
+  hpAt: string;      // HP が算出された時刻 (ISO8601)
 }//フロントへ送るやつ
 
 export interface PresenceLog {

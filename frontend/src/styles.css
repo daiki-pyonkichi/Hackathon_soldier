@@ -546,6 +546,52 @@ input::placeholder {
   color: var(--olive);
 }
 
+.hp {
+  margin-top: 10px;
+  display: grid;
+  gap: 4px;
+}
+
+.hp__label {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.hp__pct {
+  color: var(--ink);
+  letter-spacing: 0.08em;
+}
+
+.hp__bar-wrap {
+  height: 6px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  position: relative;
+}
+
+.hp__bar {
+  height: 100%;
+  transition: width 0.6s ease, background 0.3s ease;
+  box-shadow: 0 0 6px currentColor;
+}
+
+.character.absent .hp__bar {
+  /* 不在中は薄く脈打つアニメーションで「回復中」を示す */
+  animation: hp-recover-pulse 2s ease-in-out infinite;
+}
+
+@keyframes hp-recover-pulse {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+
 /* ============================================================
    Manual checkin row
    ============================================================ */

@@ -3,6 +3,7 @@ import { store } from "../db/store.js";
 import { getAuthenticatedUser } from "../middleware/auth.js";
 import { getClientIp, isLabIp } from "../middleware/ipCheck.js";
 import { judgeStatus, elapsedMinutes } from "../lib/judge.js";
+import { computeHp } from "../lib/hp.js";
 import type { Presence, PresenceView } from "../types.js";
 
 /**
@@ -99,6 +100,7 @@ presenceRouter.get("/", (req, res) => {
 
   const users = store.listUsers();
   const presences = store.listPresences();
+  const now = new Date();
   const view: PresenceView[] = users.map((u) => {
     const p: Presence = presences.find((x) => x.userId === u.id) ?? {
       userId: u.id,
@@ -108,6 +110,8 @@ presenceRouter.get("/", (req, res) => {
       lastSeenAt: null,
       manualOff: false,
     };
+    const logs = store.listPresenceLogsByUser(u.id);
+    const hp = computeHp(logs, p, now);
     return {
       userId: u.id,
       name: u.name,
@@ -117,6 +121,8 @@ presenceRouter.get("/", (req, res) => {
       elapsedMin: elapsedMinutes(p.enteredAt),
       enteredAt: p.enteredAt,
       manualOff: p.manualOff,
+      hp,
+      hpAt: now.toISOString(),
     };
   });
   return res.json({ presences: view });

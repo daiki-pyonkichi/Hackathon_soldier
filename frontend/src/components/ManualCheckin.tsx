@@ -24,6 +24,9 @@ export function ManualCheckin({
     try {
       if (manualOff) {
         await api.resume();
+        // resume だけだと is_present=false のまま次の ping(最大60秒) まで反映が遅れるので
+        // 即座に 1 回 ping を発火して在室判定を行う
+        await api.ping().catch(() => undefined);
         setMsg("在室判定を再開しました");
       } else {
         await api.leave();
