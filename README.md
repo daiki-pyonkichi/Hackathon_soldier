@@ -3,6 +3,9 @@
 研究室にいるかどうかをキャラクターの挙動で共有する PWA アプリ。
 サポーターズ主催のハッカソン製作物。
 
+- 🌐 本番URL: https://161.33.21.136.sslip.io
+- 📄 技術仕様書: [docs/SPEC.md](docs/SPEC.md)（構成・DB・API・デプロイの詳細）
+
 ## 構成
 
 ```
@@ -61,19 +64,28 @@ npm run dev
 
 → http://localhost:5173 で画面が開きます。
 
-## API エンドポイント（叩き台）
+## API エンドポイント
 
-| Method | Path                    | 説明                                       |
-| ------ | ----------------------- | ------------------------------------------ |
-| POST   | /api/auth/login         | ログイン（モック実装）                     |
-| POST   | /api/auth/signup        | ユーザー登録（モック実装）                 |
-| GET    | /api/me                 | 自分の情報取得                             |
-| POST   | /api/presence/ping      | 在室状態の更新（サーバー側で IP 判定）     |
-| POST   | /api/presence/manual    | 手動 checkin / checkout                    |
-| GET    | /api/presence           | 現在の在室者一覧                           |
+| Method | Path                    | 認証 | 説明                                   |
+| ------ | ----------------------- | ---- | -------------------------------------- |
+| POST   | /api/auth/login         | 不要 | ログイン → user + token                |
+| POST   | /api/auth/signup        | 不要 | ユーザー登録（avatarId選択可）          |
+| GET    | /api/me                 | 要   | 自分の情報取得                          |
+| POST   | /api/presence/ping      | 要   | 在室状態の更新（サーバー側で IP 判定）  |
+| POST   | /api/presence/leave     | 要   | 明示的に退室（以降pingを無視）          |
+| POST   | /api/presence/resume    | 要   | 退室解除（自動判定を再開）              |
+| GET    | /api/presence           | 要   | 現在の在室者一覧（status/hp付き）       |
+| GET    | /api/stats/ranking      | 要   | 在室時間ランキング                      |
+| GET    | /api/logs               | 要   | 在室履歴                                |
 
-詳細は Notion の要件定義ページを参照。
+詳細・DB スキーマ・在室判定ロジック・デプロイ構成は [docs/SPEC.md](docs/SPEC.md) を参照。
 
-## ステータス
+## デプロイ / 更新
 
-🚧 叩き台レベル。各機能の中身はチーム各自で実装していきます。
+本番は Oracle Cloud VM（systemd + Caddy + HTTPS）。コード更新後の再デプロイは:
+
+```bash
+./deploy/redeploy.sh        # 最新をrsync → VMで再ビルド → サービス再起動
+```
+
+詳細は [docs/SPEC.md#8-デプロイ構成](docs/SPEC.md) を参照。
