@@ -130,6 +130,9 @@ users (1) ──── (1) presence        … 各ユーザーの「今」の状
 users (1) ──── (N) presence_logs    … 各ユーザーの滞在履歴（ランキング/HP算出の元）
 ```
 
+### ER図
+![ER図](er-diagram.png)
+
 ---
 
 ## 5. API 一覧
