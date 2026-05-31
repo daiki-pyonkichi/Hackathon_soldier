@@ -19,9 +19,9 @@
 
 | 日 | 全員でやること | 個別の作業 | すり合わせ |
 | --- | --- | --- | --- |
-| 5/22 (Day1) | キックオフ・技術選定・全員でローカル起動を確認 | naganawa: 研究室IP実測<br>kuremoto: キャラ方向提案 | 夜に1回、LINEで進捗報告 |
-| 5/23-24 | — | naganawa: 認証設計<br>tsutsumi: DBスキーマ設計<br>takebayashi: 画面ワイヤー<br>kuremoto: キャラ初稿 | データモデルを三人（+長縄）でレビュー |
-| 5/25-26 | — | naganawa: /auth/login 実装<br>tsutsumi: presence API 実装<br>takebayashi: 画面作り込み<br>kuremoto: キャラ仕上げ | APIスペック（URL/リクエスト/レスポンス）を三人で確定 |
+| 5/22 (Day1) | キックオフ・技術選定・全員でローカル起動を確認 | naganawa: 研究室IP実測 / キャラ方向決め | 夜に1回、LINEで進捗報告 |
+| 5/23-24 | — | naganawa: 認証設計 / キャラ初稿<br>tsutsumi: DBスキーマ設計<br>takebayashi: 画面ワイヤー | データモデルを三人でレビュー |
+| 5/25-26 | — | naganawa: /auth/login 実装 / キャラ仕上げ<br>tsutsumi: presence API 実装<br>takebayashi: 画面作り込み | APIスペック（URL/リクエスト/レスポンス）を三人で確定 |
 | 5/27 | **中間チェック** ログイン→ホーム画面でデータが見える | バグ修正 | 全員で夜に集まって動作確認 |
 | 5/28 | — | ping ループ、タイムアウト、エラー処理 | |
 
@@ -29,11 +29,11 @@
 
 | 日 | 全員 | 個別 | すり合わせ |
 | --- | --- | --- | --- |
-| 5/29-30 | — | kuremotoのキャラ素材をfrontendに組み込む | 見た目を全員でチェック |
+| 5/29-30 | — | naganawa: キャラ素材(GIF)をfrontendに組み込む | 見た目を全員でチェック |
 | 5/31-6/1 | デプロイ先を決めて本番デプロイ | naganawa主導 | 本番URLで全員アクセステスト |
 | 6/2 (火) | **研究室実機テスト** | — | 全員で研究室に集まる |
 | 6/3 | バグ修正 | — | |
-| 6/4-5 | **スライド・デモ動画作成** | naganawa: スライド<br>kuremoto: デモ動画 | リハを全員で |
+| 6/4-5 | **スライド・デモ動画作成** | naganawa: スライド / デモ動画 | リハを全員で |
 | 6/6 (金) | **発表本番** 🎤 | — | — |
 
 ## 🤝 すり合わせのコツ
@@ -53,10 +53,10 @@
 ## 🔗 誰と何をすり合わせるか（依存関係）
 
 ```
-kuremoto(キャラ素材) ─PNGファイル─→ takebayashi(画面)
+naganawa(キャラ素材) ─GIFファイル─→ takebayashi(画面)
 naganawa(ログイン) ─user型・token仕様─→ tsutsumi, takebayashi
 tsutsumi(presence API) ─URLとレスポンス形式─→ takebayashi
-kuremoto(見取り図モック) ─レイアウト案─→ takebayashi
+naganawa(見取り図モック) ─レイアウト案─→ takebayashi
 ```
 
 ### 重要な「接面」ポイント
@@ -64,7 +64,7 @@ kuremoto(見取り図モック) ─レイアウト案─→ takebayashi
 1. **User型の定義**: naganawa と tsutsumi で合わせる（userに何の項目があるか）
 2. **tokenの形式**: naganawa が決めて takebayashi に伝える
 3. **APIのURLとレスポンス**: tsutsumi が決めて takebayashi に伝える
-4. **キャラと状態の対応**: kuremoto が決めて takebayashi に伝える
+4. **キャラと状態の対応**: naganawa が決めて takebayashi に伝える
 
 ## 🚦 「ここまで来たら合流」チェックポイント
 
@@ -77,7 +77,7 @@ kuremoto(見取り図モック) ─レイアウト案─→ takebayashi
 | DB設計完了 (tsutsumi) | naganawaとuserテーブルを合わせる |
 | APIドラフト (tsutsumi) | takebayashiにURL/入出力形式を伝える |
 | ログインAPI実装完了 (naganawa) | takebayashiにtoken仕様を伝える |
-| キャラ初稿 (kuremoto) | 全員に見せる。方向性レビュー |
+| キャラ初稿 (naganawa) | 全員に見せる。方向性レビュー |
 | ログイン画面動作 | 3人で動作チェック。トークン保存、リロードしてもログイン状態維持 |
 | ホーム画面表示 | ログイン後にホームへ、pingが送信されてるか |
 | 研究室テスト前 | **全員**でIP判定の動作をチェック |

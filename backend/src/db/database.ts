@@ -63,7 +63,7 @@ const seedCreatedAt = new Date("2026-05-22T00:00:00.000Z").toISOString();
 const seedPasswordHash = hashPassword("password123", "labsoldier-dev-seed");
 
 const seedUsers = [
-  { id: "u-naganawa", name: "naganawa", avatarId: "soldier-blue" },
+  { id: "u-naganawa", name: "naganawa", avatarId: "soldier-armor" },
   { id: "u-tsutsumi", name: "tsutsumi", avatarId: "soldier-red" },
   { id: "u-takebayashi", name: "takebayashi", avatarId: "soldier-green" },
 ];

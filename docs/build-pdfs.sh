@@ -7,7 +7,7 @@ set -e
 cd "$(dirname "$0")"
 mkdir -p pdf
 
-for name in naganawa tsutsumi takebayashi kuremoto; do
+for name in naganawa tsutsumi takebayashi; do
   echo "=== Generating $name.pdf ==="
   pandoc "guidebook-$name.md" \
     -o "pdf/guidebook-$name.pdf" \

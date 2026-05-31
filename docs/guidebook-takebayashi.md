@@ -213,17 +213,17 @@ const tick = useTimer(1000);
 | ファイル | やること |
 | --- | --- |
 | `frontend/src/components/PresenceList.tsx` | 在室一覧の見た目を整える |
-| `frontend/src/components/Character.tsx` | kuremoto の素材に差し替え |
+| `frontend/src/components/Character.tsx` | naganawa の素材に差し替え |
 | `frontend/src/components/ManualCheckin.tsx` | UI改善、トースト風通知 |
 | `frontend/src/hooks/usePresencePing.ts` | エラー時のリトライ、タブ非表示時の調整 |
 | `frontend/src/styles.css` | 全体の見た目 |
-| `frontend/public/icon-192.png`, `icon-512.png` | PWA アイコン（kuremoto から） |
+| `frontend/public/icon-192.png`, `icon-512.png` | PWA アイコン（naganawa から） |
 | `frontend/vite.config.ts` | manifest 調整 |
 
 ## 3.2 完成イメージ
 
 1. ホーム画面に「現在3人在室中」と表示
-2. キャラクター画像（kuremoto制作）が並び、在室時間で見た目が変わる
+2. キャラクター画像（naganawa制作）が並び、在室時間で見た目が変わる
 3. 不在の人はグレーアウト
 4. 手動チェックイン/チェックアウトボタンが動く
 5. PWA としてスマホのホーム画面に追加できる
@@ -336,7 +336,7 @@ export function PresenceList({ refreshMs = 15_000 }: { refreshMs?: number }) {
 
 ## ステップ 3: Character.tsx を画像対応に
 
-kuremoto の素材命名: `{avatarId}_{stage}.png`、例: `soldier-blue_lv1.png`。
+naganawa の素材命名: `{avatarId}_{stage}.png`、例: `soldier-blue_lv1.png`。
 
 `frontend/public/avatars/` に PNG を配置するルールにしておく。
 
@@ -491,7 +491,7 @@ export function ManualCheckin() {
 
 ## ステップ 6: PWA アイコンを配置
 
-kuremoto から PNG を受け取ったら `frontend/public/` に配置:
+naganawa から PNG を受け取ったら `frontend/public/` に配置:
 
 - `icon-192.png` (192x192px)
 - `icon-512.png` (512x512px)
@@ -589,9 +589,9 @@ useEffect(() => {
 | マイルストーン | 誰と何を |
 | --- | --- |
 | ステップ2完了 | tsutsumi: API が想定の形式で返ってきているか確認 |
-| ステップ3完了 | kuremoto: 素材の命名と段階数を確定 |
+| ステップ3完了 | naganawa: 素材の命名と段階数を確定 |
 | ステップ4完了 | tsutsumi: ping のタイムアウトが噛み合うか確認 |
-| ステップ6完了 | kuremoto: PWA アイコンの素材を受け取る |
+| ステップ6完了 | naganawa: PWA アイコンの素材を受け取る |
 | PR マージ後 | 全員: モバイルで動作確認 |
 
 ---

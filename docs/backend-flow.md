@@ -32,7 +32,7 @@ tsx が src/index.ts を実行
 
 [index.ts:4-6] ルーター類を import
               → 連鎖的に database.ts が評価される
-              → SQLite ファイル作成 + テーブル3つ作成 + seed 4人投入
+              → SQLite ファイル作成 + テーブル3つ作成 + seed 3人投入
 
 [index.ts:8-11] Express アプリ生成 + CORS + JSON パース ミドルウェア
 [index.ts:13-16] ルーティング登録
