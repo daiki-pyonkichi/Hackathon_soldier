@@ -3,7 +3,8 @@ import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { hashPassword } from "../services/password.js";
 // データベースの初期化とテーブル作成
-const DB_PATH = "data/labsoldier.db"; // データベースを置くパス
+// 本番では DB_PATH に永続ディスク上のパスを指定する（例: /opt/labsoldier/data/labsoldier.db）
+const DB_PATH = process.env.DB_PATH ?? "data/labsoldier.db";
 mkdirSync(dirname(DB_PATH), { recursive: true });
 
 export const db = new Database(DB_PATH);
