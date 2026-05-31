@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { store } from "../db/store.js";
+import { store, avatarIds } from "../db/store.js";
 import { getAuthenticatedUser } from "../middleware/auth.js";
 import { hashPassword, verifyPassword } from "../services/password.js";
 import { signAuthToken } from "../services/token.js";
@@ -54,7 +54,10 @@ authRouter.post("/signup", (req, res) => {
     return res.status(409).json({ error: "name is already taken" });
   }
 
-  const user = store.createUser({ name, passwordHash: hashPassword(password) });
+  const requestedAvatar = String((req.body as { avatarId?: unknown })?.avatarId ?? "");
+  const avatarId = avatarIds.includes(requestedAvatar) ? requestedAvatar : undefined;
+
+  const user = store.createUser({ name, passwordHash: hashPassword(password), avatarId });
   return res.status(201).json({ user, token: signAuthToken(user) });
 });
 

@@ -10,7 +10,9 @@ export interface LoginCredentials {
   password: string;
 }
 
-export type SignupInput = LoginCredentials;
+export interface SignupInput extends LoginCredentials {
+  avatarId?: string;
+}
 
 export interface AuthResponse {
   user: User;

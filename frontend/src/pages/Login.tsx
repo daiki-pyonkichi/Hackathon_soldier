@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { api } from "../api/client";
+import { AVATARS } from "../avatars";
 import type { User } from "../types";
 
 export function Login({ onLogin }: { onLogin: (u: User) => void }) {
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
+  const [avatarId, setAvatarId] = useState(AVATARS[0].id);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -17,7 +19,7 @@ export function Login({ onLogin }: { onLogin: (u: User) => void }) {
       const credentials = { name: name.trim(), password };
       const user = mode === "login"
         ? await api.login(credentials)
-        : await api.signup(credentials);
+        : await api.signup({ ...credentials, avatarId });
       onLogin(user);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -80,6 +82,27 @@ export function Login({ onLogin }: { onLogin: (u: User) => void }) {
             autoComplete={mode === "login" ? "current-password" : "new-password"}
           />
         </label>
+        {mode === "signup" && (
+          <div className="field">
+            <span>Avatar</span>
+            <div className="avatar-picker" role="radiogroup" aria-label="アバター選択">
+              {AVATARS.map((a) => (
+                <button
+                  key={a.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={avatarId === a.id}
+                  className={`avatar-option ${avatarId === a.id ? "active" : ""}`}
+                  onClick={() => setAvatarId(a.id)}
+                  title={a.label}
+                >
+                  <span className="avatar-option__face">{a.emoji}</span>
+                  <span className="avatar-option__label">{a.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         <button className="primary" disabled={busy || !name.trim() || !password}>
           {busy
             ? "認証中..."

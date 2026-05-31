@@ -1,12 +1,17 @@
 import { useEffect, useState } from "react";
 import type { PresenceView } from "../types";
+import {
+  AVATAR_GIFS_READY,
+  avatarEmoji,
+  avatarGifSrc,
+  avatarStage,
+} from "../avatars";
 
-const FACE: Record<string, string> = {
-  "soldier-blue": "🪖",
-  "soldier-red": "👮",
-  "soldier-green": "🧑‍🚀",
-  "soldier-yellow": "🧙",
-};
+/**
+ * キャラクター描画コンポーネント。
+ * - 見た目(GIF/絵文字): 在室経過時間の段階(1..6)で変化。GIF未配置時は絵文字フォールバック。
+ * - HPバー: サーバー算出の HP を起点に、取得時刻からの経過分でローカル補正して表示。
+ */
 
 // HP 減少: 12時間 = 720分で 100% → 0%
 const DRAIN_PER_MIN = 100 / (12 * 60);
@@ -23,20 +28,30 @@ function computeHp(p: PresenceView, now: Date): number {
   return Math.min(100, base + since * HEAL_PER_MIN);
 }
 
-function stageEmoji(hp: number, baseFace: string): string {
-  if (hp > 75) return baseFace;
-  if (hp > 50) return `${baseFace}💪`;
-  if (hp > 25) return `${baseFace}😅`;
-  return `${baseFace}💀`;
+// 段階に応じた絵文字サフィックス（GIF が無いときの簡易表現）
+function stageSuffix(stage: number): string {
+  if (stage <= 2) return "";
+  if (stage === 3) return "💪";
+  if (stage === 4) return "😅";
+  if (stage === 5) return "😩";
+  return "💀";
 }
 
 export function Character({ p }: { p: PresenceView }) {
-  const base = FACE[p.avatarId] ?? "🙂";
-  const isPresent = p.status === "present";
   const minutes = p.elapsedMin ?? 0;
+  const isPresent = p.status === "present";
+  const stage = isPresent ? avatarStage(minutes) : 1;
   const stateClass = isPresent ? "present" : "absent";
 
-  // 1分ごとに HP を再計算
+  const emoji = avatarEmoji(p.avatarId);
+  const gifSrc = avatarGifSrc(p.avatarId, stage);
+
+  // GIF 読み込み失敗時は絵文字にフォールバック。stage/avatar が変わるたびに再試行。
+  const [gifFailed, setGifFailed] = useState(false);
+  useEffect(() => setGifFailed(false), [gifSrc]);
+  const showGif = AVATAR_GIFS_READY && !gifFailed;
+
+  // 1分ごとに HP を再計算（サーバー値を起点にローカル補正）
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 60_000);
@@ -45,8 +60,6 @@ export function Character({ p }: { p: PresenceView }) {
 
   const hp = computeHp(p, now);
   const hpPct = Math.round(hp);
-  const face = stageEmoji(hp, base);
-
   // HP に応じてバーの色を変える
   const hpColor =
     hp > 60 ? "var(--olive)" : hp > 30 ? "var(--amber)" : "var(--crimson)";
@@ -54,7 +67,16 @@ export function Character({ p }: { p: PresenceView }) {
   return (
     <div className={`character ${stateClass}`}>
       <div className="avatar" aria-label={p.name}>
-        {face}
+        {showGif ? (
+          <img
+            className="avatar-img"
+            src={gifSrc}
+            alt={p.name}
+            onError={() => setGifFailed(true)}
+          />
+        ) : (
+          `${emoji}${isPresent ? stageSuffix(stage) : ""}`
+        )}
       </div>
       <div className="name">{p.name}</div>
       <div className="status">
