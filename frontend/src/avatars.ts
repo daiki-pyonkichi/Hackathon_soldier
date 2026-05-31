@@ -9,6 +9,8 @@ export interface AvatarMeta {
 }
 
 export const AVATARS: AvatarMeta[] = [
+  // soldier-armor のみ実GIF素材あり。他は GIF 未配置で絵文字フォールバック（モック）。
+  { id: "soldier-armor", label: "アーマー", emoji: "🛡️" },
   { id: "soldier-blue", label: "ブルー", emoji: "🪖" },
   { id: "soldier-red", label: "レッド", emoji: "👮" },
   { id: "soldier-green", label: "グリーン", emoji: "🧑‍🚀" },
@@ -39,5 +41,6 @@ export function avatarGifSrc(id: string, stage: number): string {
   return `/avatars/${id}_${stage}.gif`;
 }
 
-// GIF 素材を public/avatars/ に置き終えたら true にする
-export const AVATAR_GIFS_READY = false;
+// GIF 素材を public/avatars/ に置き終えたら true にする。
+// true でも、GIF が無いキャラは onError で自動的に絵文字へフォールバックする。
+export const AVATAR_GIFS_READY = true;
