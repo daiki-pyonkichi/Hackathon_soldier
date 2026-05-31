@@ -25,7 +25,7 @@ function formatTime(sec: number): string {
   return `${h}h ${m}m`;
 }
 
-export function Ranking() {
+export function Ranking({ meId }: { meId: string }) {
   const [period, setPeriod] = useState<RankingPeriod>("week");
   const [ranking, setRanking] = useState<RankingEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -71,28 +71,37 @@ export function Ranking() {
         </p>
       ) : (
         <div className="ranking-list">
-          {ranking.map((entry) => (
-            <div key={entry.userId} className="ranking-row">
-              <span className="ranking-row__rank">
-                {entry.rank <= 3
-                  ? RANK_MEDALS[entry.rank - 1]
-                  : `#${entry.rank}`}
-              </span>
-              <span className="ranking-row__avatar">
-                {FACE[entry.avatarId] ?? "🙂"}
-              </span>
-              <span className="ranking-row__name">{entry.name}</span>
-              <div className="ranking-row__bar-wrap">
-                <div
-                  className="ranking-row__bar"
-                  style={{ width: `${(entry.totalSec / maxSec) * 100}%` }}
-                />
+          {ranking.map((entry) => {
+            const isMe = entry.userId === meId;
+            return (
+              <div
+                key={entry.userId}
+                className={`ranking-row ${isMe ? "ranking-row--me" : ""}`}
+              >
+                <span className="ranking-row__rank">
+                  {entry.rank <= 3
+                    ? RANK_MEDALS[entry.rank - 1]
+                    : `#${entry.rank}`}
+                </span>
+                <span className="ranking-row__avatar">
+                  {FACE[entry.avatarId] ?? "🙂"}
+                </span>
+                <span className="ranking-row__name">
+                  {entry.name}
+                  {isMe && <span className="ranking-row__me-tag">YOU</span>}
+                </span>
+                <div className="ranking-row__bar-wrap">
+                  <div
+                    className="ranking-row__bar"
+                    style={{ width: `${(entry.totalSec / maxSec) * 100}%` }}
+                  />
+                </div>
+                <span className="ranking-row__time">
+                  {formatTime(entry.totalSec)}
+                </span>
               </div>
-              <span className="ranking-row__time">
-                {formatTime(entry.totalSec)}
-              </span>
-            </div>
-          ))}
+            );
+          })}
           {ranking.length === 0 && (
             <p className="muted" style={{ textAlign: "center", padding: "32px 0" }}>
               この期間のデータがありません

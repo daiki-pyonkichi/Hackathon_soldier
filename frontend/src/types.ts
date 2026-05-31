@@ -30,6 +30,8 @@ export interface PresenceView {
   lastSeenAt: string | null;
   elapsedMin: number | null;
   manualOff: boolean;
+  hp: number;       // サーバーが過去ログから計算した HP (0-100)
+  hpAt: string;     // HP が計算された時刻
 }
 
 export type RankingPeriod = "week" | "month" | "all";

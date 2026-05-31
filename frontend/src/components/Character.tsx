@@ -9,9 +9,24 @@ import {
 
 /**
  * キャラクター描画コンポーネント。
- * 在室経過時間に応じて段階(1..6)が変化する。
- * GIF 素材が揃うまでは絵文字でフォールバック表示する。
+ * - 見た目(GIF/絵文字): 在室経過時間の段階(1..6)で変化。GIF未配置時は絵文字フォールバック。
+ * - HPバー: サーバー算出の HP を起点に、取得時刻からの経過分でローカル補正して表示。
  */
+
+// HP 減少: 12時間 = 720分で 100% → 0%
+const DRAIN_PER_MIN = 100 / (12 * 60);
+// HP 回復: 6時間 = 360分で 0% → 100%
+const HEAL_PER_MIN = 100 / (6 * 60);
+
+// サーバー算出の HP を起点に、取得時刻からの経過分でローカル補正する
+function computeHp(p: PresenceView, now: Date): number {
+  const base = p.hp ?? 100;
+  const since = p.hpAt ? (now.getTime() - new Date(p.hpAt).getTime()) / 60000 : 0;
+  if (p.status === "present") {
+    return Math.max(0, base - since * DRAIN_PER_MIN);
+  }
+  return Math.min(100, base + since * HEAL_PER_MIN);
+}
 
 // 段階に応じた絵文字サフィックス（GIF が無いときの簡易表現）
 function stageSuffix(stage: number): string {
@@ -35,6 +50,19 @@ export function Character({ p }: { p: PresenceView }) {
   const [gifFailed, setGifFailed] = useState(false);
   useEffect(() => setGifFailed(false), [gifSrc]);
   const showGif = AVATAR_GIFS_READY && !gifFailed;
+
+  // 1分ごとに HP を再計算（サーバー値を起点にローカル補正）
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(id);
+  }, []);
+
+  const hp = computeHp(p, now);
+  const hpPct = Math.round(hp);
+  // HP に応じてバーの色を変える
+  const hpColor =
+    hp > 60 ? "var(--olive)" : hp > 30 ? "var(--amber)" : "var(--crimson)";
 
   return (
     <div className={`character ${stateClass}`}>
@@ -61,6 +89,18 @@ export function Character({ p }: { p: PresenceView }) {
         ) : (
           <>OFFLINE</>
         )}
+      </div>
+      <div className="hp">
+        <div className="hp__label">
+          <span>HP</span>
+          <span className="hp__pct">{hpPct}%</span>
+        </div>
+        <div className="hp__bar-wrap">
+          <div
+            className="hp__bar"
+            style={{ width: `${hpPct}%`, background: hpColor }}
+          />
+        </div>
       </div>
     </div>
   );

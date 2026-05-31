@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   CartesianGrid,
   Legend,
@@ -19,7 +19,11 @@ const FACE: Record<string, string> = {
   "soldier-yellow": "🧙",
 };
 
-const LINE_COLORS = ["#c2cf3a", "#f0883e", "#58a6ff", "#f85149"];
+// 4色を超えても循環するように
+const LINE_COLORS = [
+  "#c2cf3a", "#f0883e", "#58a6ff", "#f85149",
+  "#bc8cff", "#39c5cf", "#ffb347", "#a3e635",
+];
 
 const BUCKET_LABELS: { value: StatsBucket; label: string; daysBack: number }[] = [
   { value: "day",   label: "1週間 / 日別",   daysBack: 7   },
@@ -49,7 +53,6 @@ function toJstYmd(d: Date): string {
   return jst.toISOString().slice(0, 10);
 }
 
-// 期間内に存在する全 bucket key を順序付きで返す
 function generateBucketKeys(fromYmd: string, toYmd: string, bucket: StatsBucket): string[] {
   const fromParts = fromYmd.split("-").map(Number);
   const toParts = toYmd.split("-").map(Number);
@@ -71,10 +74,9 @@ function generateBucketKeys(fromYmd: string, toYmd: string, bucket: StatsBucket)
     }
     return keys;
   }
-  // week: 各週の月曜日
   let d = new Date(from);
   const dow = d.getDay();
-  d.setDate(d.getDate() - (dow === 0 ? 6 : dow - 1)); // 月曜にスナップ
+  d.setDate(d.getDate() - (dow === 0 ? 6 : dow - 1));
   while (d <= to) {
     keys.push(toYmdLocal(d));
     d.setDate(d.getDate() + 7);
@@ -86,35 +88,82 @@ function toYmdLocal(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-export function Logs({ users }: { users: User[] }) {
+const PAGE_DAYS = 5; // 1ページぶんの日数
+
+export function Logs({ users, meId }: { users: User[]; meId: string }) {
   // ===== ログ一覧 =====
-  const [allLogs, setAllLogs] = useState<PresenceLogEntry[]>([]);
+  const [logs, setLogs] = useState<PresenceLogEntry[]>([]);
   const [logsError, setLogsError] = useState<string | null>(null);
-  const [showAll, setShowAll] = useState(false);
+  const [filterUserId, setFilterUserId] = useState<string>("");
+  const [filterDate, setFilterDate] = useState<string>("");
+  const [filterTo, setFilterTo] = useState<string>("");
+  const [rangeMode, setRangeMode] = useState(false);
+  const [pages, setPages] = useState(1); // フィルタ無しの時に効く: 1ページ=5日
+  const [hasMore, setHasMore] = useState(true);
 
+  // 「もっと表示」 OR フィルタ変更で再フェッチ
   useEffect(() => {
-    api
-      .listLogs()
-      .then(setAllLogs)
-      .catch((e) => setLogsError(String(e)));
-  }, []);
+    const usingDateFilter = !!filterDate;
+    let from: string | undefined;
+    let to: string | undefined;
 
-  const visibleLogs = useMemo(() => {
-    if (showAll) return allLogs;
-    // 直近1週間（左末端=今から7日前）でフィルタ
-    const weekAgo = new Date();
-    weekAgo.setDate(weekAgo.getDate() - 7);
-    const cutoff = weekAgo.toISOString();
-    return allLogs.filter((l) => l.leftAt >= cutoff);
-  }, [allLogs, showAll]);
+    if (usingDateFilter) {
+      from = filterDate;
+      to = rangeMode && filterTo ? filterTo : filterDate;
+    } else {
+      // デフォルト: 今日から (pages * 5日) 前まで
+      const today = new Date();
+      const fromD = new Date();
+      fromD.setDate(fromD.getDate() - (pages * PAGE_DAYS - 1));
+      from = toYmdLocal(fromD);
+      to = toYmdLocal(today);
+    }
+
+    api
+      .listLogs({ userId: filterUserId || undefined, from, to })
+      .then((data) => {
+        setLogs(data);
+        setLogsError(null);
+        // フィルタ無し時のみ「もっと表示」を出す（フィルタ中はユーザー指定範囲だけ）
+        if (usingDateFilter) {
+          setHasMore(false);
+        } else {
+          // さらに過去にログが残っているか判定（取得時の最古日 < ページ起点なら次あり）
+          setHasMore(true);
+        }
+      })
+      .catch((e) => setLogsError(String(e)));
+  }, [filterUserId, filterDate, filterTo, rangeMode, pages]);
+
+  // フィルタが変わったら pages をリセット
+  useEffect(() => {
+    setPages(1);
+  }, [filterUserId, filterDate, filterTo, rangeMode]);
+
+  const clearFilters = () => {
+    setFilterUserId("");
+    setFilterDate("");
+    setFilterTo("");
+    setRangeMode(false);
+  };
+
+  const loadMore = () => setPages((p) => p + 1);
 
   // ===== 折れ線グラフ用 =====
   const [bucket, setBucket] = useState<StatsBucket>("day");
-  const [selectedIds, setSelectedIds] = useState<string[]>(() =>
-    users.slice(0, 1).map((u) => u.id)
-  );
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [statsByUser, setStatsByUser] = useState<Record<string, StatsPoint[]>>({});
   const [statsLoading, setStatsLoading] = useState(false);
+
+  // 初回 users が来たタイミングで「自分」を初期選択
+  const initRef = useRef(false);
+  useEffect(() => {
+    if (!initRef.current && users.length > 0) {
+      const me = users.find((u) => u.id === meId);
+      setSelectedIds([me?.id ?? users[0].id]);
+      initRef.current = true;
+    }
+  }, [users, meId]);
 
   const { fromYmd, toYmd } = useMemo(() => {
     const conf = BUCKET_LABELS.find((b) => b.value === bucket)!;
@@ -144,7 +193,6 @@ export function Logs({ users }: { users: User[] }) {
   }, [selectedIds, fromYmd, toYmd, bucket]);
 
   const chartData = useMemo(() => {
-    // 期間内の全 key を生成（データがない区間も 0 で埋めて線を綺麗に繋ぐ）
     const allKeys = generateBucketKeys(fromYmd, toYmd, bucket);
     return allKeys.map((key) => {
       const row: Record<string, string | number> = { key };
@@ -157,12 +205,32 @@ export function Logs({ users }: { users: User[] }) {
   }, [statsByUser, selectedIds, fromYmd, toYmd, bucket]);
 
   const toggleUser = (id: string) => {
-    setSelectedIds((prev) => {
-      if (prev.includes(id)) return prev.filter((x) => x !== id);
-      if (prev.length >= 4) return prev; // 最大4人
-      return [...prev, id];
-    });
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
   };
+
+  // ===== ドロップダウン制御 =====
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerQuery, setPickerQuery] = useState("");
+  const pickerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!pickerOpen) return;
+    const onClickOutside = (e: MouseEvent) => {
+      if (!pickerRef.current?.contains(e.target as Node)) setPickerOpen(false);
+    };
+    document.addEventListener("mousedown", onClickOutside);
+    return () => document.removeEventListener("mousedown", onClickOutside);
+  }, [pickerOpen]);
+
+  const filteredPickerUsers = useMemo(
+    () =>
+      users.filter((u) =>
+        u.name.toLowerCase().includes(pickerQuery.toLowerCase())
+      ),
+    [users, pickerQuery]
+  );
 
   return (
     <>
@@ -184,28 +252,81 @@ export function Logs({ users }: { users: User[] }) {
           </div>
         </div>
 
-        <div className="user-picker">
-          <span className="user-picker__label">比較対象（最大4人）:</span>
-          {users.map((u) => {
-            const active = selectedIds.includes(u.id);
-            const disabled = !active && selectedIds.length >= 4;
-            return (
-              <button
-                key={u.id}
-                className={`user-chip ${active ? "active" : ""}`}
-                onClick={() => toggleUser(u.id)}
-                disabled={disabled}
-              >
-                {FACE[u.avatarId] ?? "🙂"} {u.name}
-              </button>
-            );
-          })}
+        <div className="user-picker" ref={pickerRef}>
+          <span className="user-picker__label">
+            比較対象（{selectedIds.length}人選択中）:
+          </span>
+          <div className="user-picker__selected">
+            {selectedIds.length === 0 && (
+              <span className="muted" style={{ fontSize: 12 }}>未選択</span>
+            )}
+            {selectedIds.map((uid, i) => {
+              const u = users.find((x) => x.id === uid);
+              if (!u) return null;
+              const color = LINE_COLORS[i % LINE_COLORS.length];
+              return (
+                <span
+                  key={uid}
+                  className="user-picker__pill"
+                  style={{ borderLeft: `3px solid ${color}` }}
+                >
+                  {FACE[u.avatarId] ?? "🙂"} {u.name}
+                  <button
+                    className="user-picker__remove"
+                    onClick={() => toggleUser(uid)}
+                    aria-label="解除"
+                  >
+                    ×
+                  </button>
+                </span>
+              );
+            })}
+          </div>
+          <button
+            className="user-picker__toggle"
+            onClick={() => setPickerOpen((v) => !v)}
+          >
+            選択 ▾
+          </button>
+          {pickerOpen && (
+            <div className="user-picker__dropdown">
+              <input
+                type="text"
+                placeholder="🔎 検索…"
+                value={pickerQuery}
+                onChange={(e) => setPickerQuery(e.target.value)}
+                className="user-picker__search"
+              />
+              <ul className="user-picker__list">
+                {filteredPickerUsers.length === 0 && (
+                  <li className="muted" style={{ padding: 12, textAlign: "center" }}>
+                    一致するユーザーなし
+                  </li>
+                )}
+                {filteredPickerUsers.map((u) => {
+                  const active = selectedIds.includes(u.id);
+                  return (
+                    <li key={u.id}>
+                      <label className="user-picker__row">
+                        <input
+                          type="checkbox"
+                          checked={active}
+                          onChange={() => toggleUser(u.id)}
+                        />
+                        <span>{FACE[u.avatarId] ?? "🙂"} {u.name}</span>
+                      </label>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
         </div>
 
         <div className="chart-wrap">
           {statsLoading ? (
             <p className="muted" style={{ textAlign: "center", padding: 32 }}>LOADING…</p>
-          ) : chartData.length === 0 ? (
+          ) : selectedIds.length === 0 || chartData.length === 0 ? (
             <p className="muted" style={{ textAlign: "center", padding: 32 }}>データがありません</p>
           ) : (
             <ResponsiveContainer width="100%" height={320}>
@@ -241,20 +362,70 @@ export function Logs({ users }: { users: User[] }) {
         </div>
       </section>
 
-      {/* ============== ログ一覧 ============== */}
+      {/* ============== ログ一覧（高さ固定スクロール） ============== */}
       <section className="card">
         <div className="card__head">
           <h2>Activity Log · 在室履歴</h2>
           <span className="spacer" />
           <span className="count">
-            <strong>{visibleLogs.length}</strong> entries
+            <strong>{logs.length}</strong> entries
           </span>
+        </div>
+
+        {/* 検索フィルタ */}
+        <div className="log-filters">
+          <label className="log-filter">
+            <span>名前</span>
+            <select
+              value={filterUserId}
+              onChange={(e) => setFilterUserId(e.target.value)}
+            >
+              <option value="">全員</option>
+              {users.map((u) => (
+                <option key={u.id} value={u.id}>{u.name}</option>
+              ))}
+            </select>
+          </label>
+          <label className="log-filter">
+            <span>日付</span>
+            <input
+              type="date"
+              value={filterDate}
+              onChange={(e) => setFilterDate(e.target.value)}
+            />
+          </label>
+          <label className="log-filter log-filter--toggle">
+            <input
+              type="checkbox"
+              checked={rangeMode}
+              onChange={(e) => {
+                setRangeMode(e.target.checked);
+                if (!e.target.checked) setFilterTo("");
+              }}
+              disabled={!filterDate}
+            />
+            <span>範囲指定</span>
+          </label>
+          {rangeMode && (
+            <label className="log-filter">
+              <span>〜まで</span>
+              <input
+                type="date"
+                value={filterTo}
+                onChange={(e) => setFilterTo(e.target.value)}
+                min={filterDate || undefined}
+              />
+            </label>
+          )}
+          {(filterUserId || filterDate || filterTo) && (
+            <button className="ghost" onClick={clearFilters}>クリア</button>
+          )}
         </div>
 
         {logsError && <p className="auth-error">取得失敗: {logsError}</p>}
 
-        <div className="log-list">
-          {visibleLogs.map((log) => (
+        <div className="log-list log-list--scroll">
+          {logs.map((log) => (
             <div key={log.id} className="log-row">
               <span className="log-row__avatar">{FACE[log.avatarId] ?? "🙂"}</span>
               <span className="log-row__name">{log.name}</span>
@@ -264,20 +435,18 @@ export function Logs({ users }: { users: User[] }) {
               <span className="log-row__duration">{formatTime(log.durationSec)}</span>
             </div>
           ))}
-          {visibleLogs.length === 0 && (
+          {logs.length === 0 && (
             <p className="muted" style={{ textAlign: "center", padding: 32 }}>
               該当する履歴がありません
             </p>
           )}
-        </div>
 
-        {!showAll && allLogs.length > visibleLogs.length && (
-          <div style={{ textAlign: "center", marginTop: 16 }}>
-            <button onClick={() => setShowAll(true)}>
-              ▸ もっと表示（残り {allLogs.length - visibleLogs.length} 件）
-            </button>
-          </div>
-        )}
+          {hasMore && !filterDate && (
+            <div className="log-list__more">
+              <button onClick={loadMore}>▾ もっと表示（さらに{PAGE_DAYS}日前まで）</button>
+            </div>
+          )}
+        </div>
       </section>
     </>
   );

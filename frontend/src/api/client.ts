@@ -116,10 +116,11 @@ export const api = {
     return data.ranking;
   },
 
-  async listLogs(filters: { userId?: string; date?: string } = {}): Promise<PresenceLogEntry[]> {
+  async listLogs(filters: { userId?: string; from?: string; to?: string } = {}): Promise<PresenceLogEntry[]> {
     const qs = new URLSearchParams();
     if (filters.userId) qs.set("userId", filters.userId);
-    if (filters.date) qs.set("date", filters.date);
+    if (filters.from) qs.set("from", filters.from);
+    if (filters.to) qs.set("to", filters.to);
     const suffix = qs.toString() ? `?${qs}` : "";
     const data = await request<{ logs: PresenceLogEntry[] }>(`/api/logs${suffix}`);
     return data.logs;

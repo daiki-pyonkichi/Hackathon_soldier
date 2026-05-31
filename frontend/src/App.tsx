@@ -109,9 +109,10 @@ function App() {
           <ManualCheckin manualOff={manualOff} onChanged={fetchPresences} />
         </>
       )}
-      {activeTab === "ranking" && <Ranking />}
+      {activeTab === "ranking" && <Ranking meId={me.id} />}
       {activeTab === "logs" && (
         <Logs
+          meId={me.id}
           users={presences.map((p) => ({
             id: p.userId,
             name: p.name,

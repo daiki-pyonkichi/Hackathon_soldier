@@ -14,6 +14,19 @@ export function PresenceList({
 }) {
   const presentCount = presences.filter((p) => p.status === "present").length;
 
+  // 並び順: 在室中 → 不在 / 在室中は入室が古い順（長くいる人が上） / 不在は名前順
+  const sorted = [...presences].sort((a, b) => {
+    const aPresent = a.status === "present";
+    const bPresent = b.status === "present";
+    if (aPresent !== bPresent) return aPresent ? -1 : 1;
+    if (aPresent && bPresent) {
+      const aT = a.enteredAt ? new Date(a.enteredAt).getTime() : Infinity;
+      const bT = b.enteredAt ? new Date(b.enteredAt).getTime() : Infinity;
+      return aT - bT;
+    }
+    return a.name.localeCompare(b.name);
+  });
+
   return (
     <section className="card">
       <div className="card__head">
@@ -25,7 +38,7 @@ export function PresenceList({
       </div>
       {error && <p className="auth-error">取得失敗: {error}</p>}
       <div className="character-grid">
-        {presences.map((p) => (
+        {sorted.map((p) => (
           <Character key={p.userId} p={p} />
         ))}
       </div>
