@@ -3,6 +3,9 @@ import { api } from "../api/client";
 import type { RankingEntry, RankingPeriod } from "../types";
 
 const FACE: Record<string, string> = {
+  "soldier-armor": "🛡️",
+  "soldier-spear": "🔱",
+  "soldier-naginata2": "⚔️",
   "soldier-blue": "🪖",
   "soldier-red": "👮",
   "soldier-green": "🧑‍🚀",

@@ -12,6 +12,7 @@ const insertUserStmt = db.prepare(`
   INSERT INTO users (id, name, password_hash, avatar_id, created_at)
   VALUES (?, ?, ?, ?, ?)
 `);
+const updateAvatarStmt = db.prepare(`UPDATE users SET avatar_id = ? WHERE id = ?`);
 const presenceByIdStmt = db.prepare("SELECT * FROM presence WHERE user_id = ?");
 const allPresencesStmt = db.prepare("SELECT * FROM presence");
 const upsertPresenceStmt = db.prepare(`
@@ -92,7 +93,7 @@ const rankingStmt = db.prepare(`
   ORDER BY total_sec DESC
 `);
 
-export const avatarIds = ["soldier-blue", "soldier-red", "soldier-green", "soldier-yellow"];
+export const avatarIds = ["soldier-armor", "soldier-spear", "soldier-naginata2", "soldier-red"];
 
 type UserRow = {
   id: string;
@@ -164,6 +165,10 @@ export const store = {
     insertBlankPresenceStmt.run(id);
     return { id, name: input.name, avatarId, createdAt };
   },//新規ユーザーを作る関数（auth.ts の signup から呼ばれる）
+  updateAvatar(userId: string, avatarId: string): User | undefined {
+    updateAvatarStmt.run(avatarId, userId);
+    return this.getUser(userId);
+  },//ユーザーのアバターを変更する関数
   listPresences(): Presence[] {
     return (allPresencesStmt.all() as PresenceRow[]).map(rowToPresence);
   },//すべての在室情報を取得する関数

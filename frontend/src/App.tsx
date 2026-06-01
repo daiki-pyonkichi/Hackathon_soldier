@@ -3,6 +3,7 @@ import { api } from "./api/client";
 import { usePresencePing } from "./hooks/usePresencePing";
 import { PresenceList } from "./components/PresenceList";
 import { ManualCheckin } from "./components/ManualCheckin";
+import { AvatarModal } from "./components/AvatarModal";
 import { Login } from "./pages/Login";
 import { Ranking } from "./pages/Ranking";
 import { Logs } from "./pages/Logs";
@@ -16,6 +17,7 @@ function App() {
   const [presences, setPresences] = useState<PresenceView[]>([]);
   const [presenceError, setPresenceError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("home");
+  const [avatarModalOpen, setAvatarModalOpen] = useState(false);
 
   useEffect(() => {
     const storedUser = api.getStoredUser();
@@ -77,11 +79,22 @@ function App() {
         </div>
         <div className="ops-bar__user">
           <span className="who">{me.name}</span>
+          <button className="ghost" onClick={() => setAvatarModalOpen(true)}>
+            キャラ変更
+          </button>
           <button className="ghost" onClick={logout}>
             Logout
           </button>
         </div>
       </header>
+
+      {avatarModalOpen && (
+        <AvatarModal
+          current={me.avatarId}
+          onClose={() => setAvatarModalOpen(false)}
+          onSaved={(u) => setMe(u)}
+        />
+      )}
       <div className="nav-tabs">
         <button
           className={activeTab === "home" ? "active" : ""}

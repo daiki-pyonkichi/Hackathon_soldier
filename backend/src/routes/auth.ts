@@ -74,3 +74,18 @@ export function meHandler(req: import("express").Request, res: import("express")
   if (!user) return res.status(401).json({ error: "unauthorized" });
   return res.json({ user });
 }
+
+// PATCH /api/me : { avatarId } で自分のアバターを変更（index.ts でマウント）
+export function updateMeHandler(req: import("express").Request, res: import("express").Response) {
+  const user = getAuthenticatedUser(req);
+  if (!user) return res.status(401).json({ error: "unauthorized" });
+
+  const requestedAvatar = String((req.body as { avatarId?: unknown })?.avatarId ?? "");
+  if (!avatarIds.includes(requestedAvatar)) {
+    return res.status(400).json({ error: "invalid avatarId" });
+  }
+
+  const updated = store.updateAvatar(user.id, requestedAvatar);
+  if (!updated) return res.status(404).json({ error: "user not found" });
+  return res.json({ user: updated });
+}
