@@ -18,7 +18,8 @@ db.exec(`
     name TEXT UNIQUE NOT NULL,
     password_hash TEXT NOT NULL DEFAULT '',
     avatar_id TEXT NOT NULL,
-    created_at TEXT NOT NULL
+    created_at TEXT NOT NULL,
+    is_admin INTEGER NOT NULL DEFAULT 0
   );
 
   CREATE TABLE IF NOT EXISTS presence (
@@ -58,6 +59,12 @@ if (!presenceCols.some((c) => c.name === "manual_off")) {
   db.exec(`ALTER TABLE presence ADD COLUMN manual_off INTEGER NOT NULL DEFAULT 0`);
 }
 
+// 既存DBに is_admin カラムが無ければ追加（in-place マイグレーション）
+const userCols = db.pragma("table_info(users)") as Array<{ name: string }>;
+if (!userCols.some((c) => c.name === "is_admin")) {
+  db.exec(`ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0`);
+}
+
 // 開発用初期パスワードは password123（固定 salt でハッシュ化、毎起動で同じ値になる）
 const seedCreatedAt = new Date("2026-05-22T00:00:00.000Z").toISOString();
 const seedPasswordHash = hashPassword("password123", "labsoldier-dev-seed");
@@ -80,5 +87,16 @@ for (const u of seedUsers) {
   insertUser.run(u.id, u.name, seedPasswordHash, u.avatarId, seedCreatedAt);
   insertPresence.run(u.id);
 }
+
+// 管理者シードユーザー: name=admin / password=admin1234
+const seedAdminPasswordHash = hashPassword("admin1234", "labsoldier-admin-seed");
+const insertAdmin = db.prepare(`
+  INSERT OR IGNORE INTO users (id, name, password_hash, avatar_id, created_at, is_admin)
+  VALUES (?, ?, ?, ?, ?, 1)
+`);
+insertAdmin.run("u-admin", "admin", seedAdminPasswordHash, "soldier-armor", seedCreatedAt);
+// 既存DBで admin ユーザーが居る場合、is_admin フラグを必ず立て直す
+db.prepare(`UPDATE users SET is_admin = 1 WHERE id = 'u-admin'`).run();
+insertPresence.run("u-admin");
 
 console.log("[db] ready:", DB_PATH);

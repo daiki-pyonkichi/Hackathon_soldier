@@ -3,6 +3,7 @@ export interface User {
   name: string;
   avatarId: string;
   createdAt: string;
+  isAdmin: boolean;
 }
 
 export interface LoginCredentials {

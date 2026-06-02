@@ -1,0 +1,80 @@
+import { useEffect, useRef, useState } from "react";
+
+/**
+ * ヘッダー右上のハンバーガーメニュー。
+ * - キャラ変更 / アカウント削除 / Logout を集約
+ * - 機能追加時はここに項目を増やす
+ */
+export function HeaderMenu({
+  onAvatarChange,
+  onDeleteAccount,
+  onLogout,
+}: {
+  onAvatarChange: () => void;
+  onDeleteAccount: () => void;
+  onLogout: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  // 外側クリック / Esc で閉じる
+  useEffect(() => {
+    if (!open) return;
+    const onPointer = (e: MouseEvent) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", onPointer);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onPointer);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  const run = (fn: () => void) => () => {
+    setOpen(false);
+    fn();
+  };
+
+  return (
+    <div className="header-menu" ref={wrapperRef}>
+      <button
+        type="button"
+        className="ghost header-menu__toggle"
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label="メニュー"
+      >
+        <span className="header-menu__bars" aria-hidden>
+          <span />
+          <span />
+          <span />
+        </span>
+      </button>
+      {open && (
+        <div className="header-menu__dropdown" role="menu">
+          <button type="button" role="menuitem" onClick={run(onAvatarChange)}>
+            キャラ変更
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className="header-menu__danger"
+            onClick={run(onDeleteAccount)}
+          >
+            アカウント削除
+          </button>
+          <button type="button" role="menuitem" onClick={run(onLogout)}>
+            Logout
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}

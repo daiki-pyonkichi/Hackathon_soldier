@@ -89,3 +89,20 @@ export function updateMeHandler(req: import("express").Request, res: import("exp
   if (!updated) return res.status(404).json({ error: "user not found" });
   return res.json({ user: updated });
 }
+
+// DELETE /api/me : 自分のアカウントを削除。{ password } で本人確認する
+export function deleteMeHandler(req: import("express").Request, res: import("express").Response) {
+  const user = getAuthenticatedUser(req);
+  if (!user) return res.status(401).json({ error: "unauthorized" });
+
+  const password = String((req.body as { password?: unknown })?.password ?? "");
+  if (!password) return res.status(400).json({ error: "password is required" });
+
+  const authUser = store.getAuthUserByName(user.name);
+  if (!authUser || !verifyPassword(password, authUser.passwordHash)) {
+    return res.status(401).json({ error: "password is incorrect" });
+  }
+
+  store.deleteUser(user.id);
+  return res.json({ ok: true });
+}

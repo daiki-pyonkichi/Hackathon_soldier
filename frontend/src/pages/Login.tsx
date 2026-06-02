@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { api } from "../api/client";
-import { AVATARS } from "../avatars";
+import { AVATARS, avatarNormalPngSrc } from "../avatars";
 import type { User } from "../types";
 
 export function Login({ onLogin }: { onLogin: (u: User) => void }) {
@@ -87,18 +87,12 @@ export function Login({ onLogin }: { onLogin: (u: User) => void }) {
             <span>Avatar</span>
             <div className="avatar-picker" role="radiogroup" aria-label="アバター選択">
               {AVATARS.map((a) => (
-                <button
+                <AvatarPngOption
                   key={a.id}
-                  type="button"
-                  role="radio"
-                  aria-checked={avatarId === a.id}
-                  className={`avatar-option ${avatarId === a.id ? "active" : ""}`}
-                  onClick={() => setAvatarId(a.id)}
-                  title={a.label}
-                >
-                  <span className="avatar-option__face">{a.emoji}</span>
-                  <span className="avatar-option__label">{a.label}</span>
-                </button>
+                  meta={a}
+                  active={avatarId === a.id}
+                  onSelect={() => setAvatarId(a.id)}
+                />
               ))}
             </div>
           </div>
@@ -119,5 +113,40 @@ export function Login({ onLogin }: { onLogin: (u: User) => void }) {
       )}
       {error && <p className="auth-error">{error}</p>}
     </section>
+  );
+}
+
+// PNG が無いときは絵文字にフォールバック
+function AvatarPngOption({
+  meta,
+  active,
+  onSelect,
+}: {
+  meta: (typeof AVATARS)[number];
+  active: boolean;
+  onSelect: () => void;
+}) {
+  const [imgFailed, setImgFailed] = useState(false);
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={active}
+      className={`avatar-option ${active ? "active" : ""}`}
+      onClick={onSelect}
+      title={meta.label}
+    >
+      {imgFailed ? (
+        <span className="avatar-option__face">{meta.emoji}</span>
+      ) : (
+        <img
+          className="avatar-option__png"
+          src={avatarNormalPngSrc(meta.id)}
+          alt={meta.label}
+          onError={() => setImgFailed(true)}
+        />
+      )}
+      <span className="avatar-option__label">{meta.label}</span>
+    </button>
   );
 }

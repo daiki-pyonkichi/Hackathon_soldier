@@ -82,7 +82,11 @@ export function Character({ p }: { p: PresenceView }) {
       <div className="status">
         {isPresent ? (
           <>
-            ON DUTY · <strong>{minutes}m</strong>
+            ON DUTY · <strong>{[
+              Math.floor(minutes / 1440) > 0 && `${Math.floor(minutes / 1440)}d`,
+              Math.floor((minutes % 1440) / 60) > 0 && `${Math.floor((minutes % 1440) / 60)}h`,
+              minutes % 60 > 0 && `${minutes % 60}m`,
+            ].filter(Boolean).join(" ") || "0m"}</strong>
           </>
         ) : p.status === "unknown" ? (
           <>UNKNOWN</>

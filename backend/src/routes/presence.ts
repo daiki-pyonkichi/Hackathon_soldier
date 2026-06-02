@@ -18,6 +18,8 @@ export const presenceRouter = Router();
 presenceRouter.post("/ping", (req, res) => {
   const user = getAuthenticatedUser(req);
   if (!user) return res.status(401).json({ error: "unauthorized" });
+  // 管理者は在室判定の対象外
+  if (user.isAdmin) return res.json({ skipped: true });
 
   const ip = getClientIp(req);
   const prev = store.getPresence(user.id);
@@ -59,6 +61,7 @@ presenceRouter.post("/ping", (req, res) => {
 presenceRouter.post("/leave", (req, res) => {
   const user = getAuthenticatedUser(req);
   if (!user) return res.status(401).json({ error: "unauthorized" });
+  if (user.isAdmin) return res.json({ skipped: true });
 
   const now = new Date().toISOString();
   const prev = store.getPresence(user.id);
@@ -87,6 +90,7 @@ presenceRouter.post("/leave", (req, res) => {
 presenceRouter.post("/resume", (req, res) => {
   const user = getAuthenticatedUser(req);
   if (!user) return res.status(401).json({ error: "unauthorized" });
+  if (user.isAdmin) return res.json({ skipped: true });
 
   store.setManualOff(user.id, false);
   const updated = store.getPresence(user.id);
@@ -98,7 +102,8 @@ presenceRouter.get("/", (req, res) => {
   const authUser = getAuthenticatedUser(req);
   if (!authUser) return res.status(401).json({ error: "unauthorized" });
 
-  const users = store.listUsers();
+  // 管理者は「研究室メンバー」ではなくアカウント管理者なので在室リストから除外する
+  const users = store.listUsers().filter((u) => !u.isAdmin);
   const presences = store.listPresences();
   const now = new Date();
   const view: PresenceView[] = users.map((u) => {

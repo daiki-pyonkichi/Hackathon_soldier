@@ -18,3 +18,10 @@ export function getAuthenticatedUser(req: Request): User | null {
 
   return store.getUser(payload.sub) ?? null;
 }
+
+// 管理者だけが通せる認証ヘルパ。null 戻り時は呼び出し側で 401/403 を返す
+export function getAuthenticatedAdmin(req: Request): User | null {
+  const user = getAuthenticatedUser(req);
+  if (!user || !user.isAdmin) return null;
+  return user;
+}

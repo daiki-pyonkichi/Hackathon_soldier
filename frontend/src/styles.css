@@ -124,6 +124,10 @@ body::after {
   padding-bottom: 20px;
   margin-bottom: 28px;
   border-bottom: 1px dashed var(--border);
+  /* boot アニメの transform で stacking context ができ、後続の .card に重なられる対策。
+     position+z-index で #root 内のレイヤーを明示的に引き上げる。 */
+  position: relative;
+  z-index: 20;
 }
 
 .ops-bar__title {
@@ -488,6 +492,13 @@ input::placeholder {
   object-fit: contain;
 }
 
+.avatar-option__png {
+  width: 64px;
+  height: 88px;
+  object-fit: contain;
+  image-rendering: auto;
+}
+
 .avatar-option__label {
   font-family: "JetBrains Mono", ui-monospace, monospace;
   font-size: 9px;
@@ -610,6 +621,7 @@ input::placeholder {
 
 .character.present .status strong {
   color: var(--olive);
+  text-transform: lowercase;
 }
 
 .hp {
@@ -701,19 +713,9 @@ input::placeholder {
   50% { opacity: 0.35; }
 }
 
-@keyframes wiggle {
-  0%, 100% { transform: rotate(-3deg); }
-  50% { transform: rotate(3deg); }
-}
-
 @keyframes boot {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
-}
-
-.character.present .avatar {
-  display: inline-block;
-  animation: wiggle 1.4s ease-in-out infinite;
 }
 
 .terminal,
@@ -869,6 +871,17 @@ input::placeholder {
 .ranking-row__avatar {
   font-size: 28px;
   text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ランキング行の枠（40px 列）に収まるサイズ。縦長キャラの比率に合わせて高さは少し大きめ */
+.ranking-row__avatar-png {
+  width: 32px;
+  height: 44px;
+  object-fit: contain;
+  display: block;
 }
 
 .ranking-row__name {
@@ -951,11 +964,23 @@ input::placeholder {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 4px 4px 10px;
+  padding: 4px 4px 4px 8px;
   background: var(--bg-2);
   border: 1px solid var(--border);
   font-size: 12px;
   letter-spacing: 0.04em;
+}
+
+.user-picker__avatar-png {
+  width: 18px;
+  height: 24px;
+  object-fit: contain;
+  display: block;
+}
+
+.user-picker__avatar-emoji {
+  font-size: 14px;
+  line-height: 1;
 }
 
 .user-picker__remove {
@@ -1146,6 +1171,61 @@ input::placeholder {
 .log-row__avatar {
   font-size: 22px;
   text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ログ行（32px 列）に収まる小さい PNG */
+.log-row__avatar-png {
+  width: 26px;
+  height: 36px;
+  object-fit: contain;
+  display: block;
+}
+
+/* 管理者の場合は末尾に削除列を追加 */
+.log-row--admin {
+  grid-template-columns: 32px 100px 1fr 80px 64px;
+}
+
+.log-row__delete {
+  padding: 6px 8px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+
+/* 管理者用ログ追加フォーム */
+.log-add-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  background: var(--bg-2);
+  border: 1px dashed var(--border-strong);
+}
+
+.log-add-form__error {
+  flex: 1 1 100%;
+  margin: 0;
+}
+
+.log-add-form input[type="datetime-local"] {
+  font: inherit;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  padding: 8px 12px;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-2);
+  color: var(--ink);
+  outline: none;
+  font-size: 12px;
+  color-scheme: dark;
+}
+
+.log-add-form input[type="datetime-local"]:focus {
+  border-color: var(--olive);
 }
 
 .log-row__name {
@@ -1172,7 +1252,7 @@ input::placeholder {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  z-index: 50;
+  z-index: 100;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1222,6 +1302,201 @@ input::placeholder {
   justify-content: flex-end;
   gap: 10px;
   margin-top: 20px;
+}
+
+/* ============================================================
+   Header hamburger menu
+   ============================================================ */
+
+.header-menu {
+  position: relative;
+}
+
+.header-menu__toggle {
+  padding: 8px 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.header-menu__bars {
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: space-between;
+  width: 18px;
+  height: 14px;
+}
+
+.header-menu__bars span {
+  display: block;
+  height: 2px;
+  background: currentColor;
+}
+
+.header-menu__dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 40;
+  display: grid;
+  min-width: 200px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+.header-menu__dropdown button {
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  padding: 12px 14px;
+  text-align: left;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.header-menu__dropdown button:last-child {
+  border-bottom: 0;
+}
+
+.header-menu__dropdown button:hover:not(:disabled) {
+  background: var(--surface-2);
+  border-color: var(--border);
+}
+
+.header-menu__dropdown button.header-menu__danger {
+  color: var(--crimson);
+}
+
+.header-menu__dropdown button.header-menu__danger:hover:not(:disabled) {
+  background: rgba(248, 81, 73, 0.12);
+}
+
+/* ============================================================
+   Danger button / admin badge
+   ============================================================ */
+
+button.danger,
+.btn.danger {
+  border-color: rgba(248, 81, 73, 0.6);
+  color: var(--crimson);
+  background: transparent;
+}
+
+button.danger:hover:not(:disabled) {
+  background: rgba(248, 81, 73, 0.12);
+  border-color: var(--crimson);
+}
+
+button.primary.danger {
+  background: var(--crimson);
+  color: #0a0d12;
+  border-color: var(--crimson);
+}
+
+button.primary.danger:hover:not(:disabled) {
+  background: #d63a33;
+  border-color: #d63a33;
+}
+
+.admin-tag {
+  padding: 2px 6px;
+  background: var(--amber);
+  color: #0a0d12;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+}
+
+/* ============================================================
+   Admin console
+   ============================================================ */
+
+.admin-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.admin-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  transition: border-color 0.2s ease;
+}
+
+.admin-row:hover {
+  border-color: var(--border-strong);
+}
+
+.admin-row__info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.admin-row__name {
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 0.04em;
+}
+
+.admin-row__sub {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--muted-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-row__badge {
+  padding: 2px 6px;
+  background: var(--amber);
+  color: #0a0d12;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+
+.admin-row__badge--me {
+  background: var(--olive);
+}
+
+.admin-row__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.admin-row__actions button {
+  font-size: 11px;
+  padding: 6px 10px;
+  letter-spacing: 0.1em;
+}
+
+@media (max-width: 640px) {
+  .admin-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .admin-row__actions {
+    justify-content: flex-end;
+  }
 }
 
 /* ============================================================
