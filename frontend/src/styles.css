@@ -124,6 +124,10 @@ body::after {
   padding-bottom: 20px;
   margin-bottom: 28px;
   border-bottom: 1px dashed var(--border);
+  /* boot アニメの transform で stacking context ができ、後続の .card に重なられる対策。
+     position+z-index で #root 内のレイヤーを明示的に引き上げる。 */
+  position: relative;
+  z-index: 20;
 }
 
 .ops-bar__title {
@@ -1247,7 +1251,7 @@ input::placeholder {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  z-index: 50;
+  z-index: 100;
   display: flex;
   align-items: center;
   justify-content: center;
