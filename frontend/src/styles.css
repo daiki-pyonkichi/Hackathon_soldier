@@ -621,6 +621,7 @@ input::placeholder {
 
 .character.present .status strong {
   color: var(--olive);
+  text-transform: lowercase;
 }
 
 .hp {
