@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 # LabSoldier 再デプロイスクリプト（ローカルから実行）。
 # 最新コードを取得 → VMへrsync → VM上で再ビルド → サービス再起動。
-# DB(backend/data) は除外するので本番データは保持される。
+#
+# ★ 永続データ(env / SQLite DB)は /opt/labsoldier-data に置く。これは rsync 対象
+#   (/opt/labsoldier)の外なので、--delete をかけても消えない。
+#   （過去に env と DB を /opt/labsoldier 内に置いていて --delete で消した事故あり）
 #
 # 使い方:
 #   ./deploy/redeploy.sh
@@ -29,6 +32,7 @@ rsync -az --delete \
   --exclude 'backend/dist' \
   --exclude 'frontend/dist' \
   --exclude 'backend/data' \
+  --exclude '.env' \
   --exclude '.DS_Store' \
   ./ "$VM_USER@$VM_IP:$REMOTE_DIR/"
 
