@@ -4,20 +4,18 @@ After=network.target
 
 [Service]
 Type=simple
-# アプリの配置先（setup.sh で /opt/labsoldier にcloneする前提）
+# コードの配置先（rsync/clone先）
 WorkingDirectory=/opt/labsoldier/backend
 # Node のフルパスは `which node` で確認して合わせる
 ExecStart=/usr/bin/node dist/index.js
 Restart=always
 RestartSec=3
-User=labsoldier
-Group=labsoldier
-Environment=NODE_ENV=production
-Environment=PORT=3001
-# 永続ディスク上の DB パス
-Environment=DB_PATH=/opt/labsoldier/data/labsoldier.db
-# 環境変数は EnvironmentFile にまとめる（JWT_SECRET / LAB_ALLOWED_IPS など）
-EnvironmentFile=/opt/labsoldier/labsoldier.env
+# rsync(ubuntu)と同じユーザーで動かすと再デプロイ時の権限衝突が無い
+User=ubuntu
+Group=ubuntu
+# 環境変数(JWT_SECRET / LAB_ALLOWED_IPS / DB_PATH 等)は永続ディレクトリに置く。
+# ★ /opt/labsoldier-data は rsync 対象(/opt/labsoldier)の外。--delete で消えないようにするため。
+EnvironmentFile=/opt/labsoldier-data/labsoldier.env
 
 [Install]
 WantedBy=multi-user.target

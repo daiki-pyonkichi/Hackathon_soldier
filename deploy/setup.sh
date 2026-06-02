@@ -6,7 +6,8 @@
 set -euo pipefail
 
 REPO_URL="https://github.com/daiki-pyonkichi/Hackathon_soldier.git"
-APP_DIR="/opt/labsoldier"
+APP_DIR="/opt/labsoldier"        # コード配置先（rsync/clone先）
+DATA_DIR="/opt/labsoldier-data"  # 永続データ(env/DB)。rsync対象外なので --delete で消えない
 NODE_MAJOR=20
 
 echo "==> 1. パッケージ更新 + 必要ツール"
@@ -29,7 +30,7 @@ if [ -d "$APP_DIR/.git" ]; then
 else
   git clone "$REPO_URL" "$APP_DIR"
 fi
-mkdir -p "$APP_DIR/data"
+mkdir -p "$DATA_DIR"
 
 echo "==> 5. backend ビルド"
 cd "$APP_DIR/backend"
@@ -41,13 +42,14 @@ cd "$APP_DIR/frontend"
 npm install
 npm run build
 
-echo "==> 7. 所有権を labsoldier に"
-chown -R labsoldier:labsoldier "$APP_DIR"
+echo "==> 7. 所有権を ubuntu に（サービス実行ユーザーと揃える）"
+chown -R ubuntu:ubuntu "$APP_DIR" "$DATA_DIR"
 
-echo "==> 8. 環境変数ファイル"
-if [ ! -f "$APP_DIR/labsoldier.env" ]; then
-  cp "$APP_DIR/deploy/labsoldier.env.example" "$APP_DIR/labsoldier.env"
-  echo "!! $APP_DIR/labsoldier.env を編集して JWT_SECRET と LAB_ALLOWED_IPS を設定してください"
+echo "==> 8. 環境変数ファイル（永続ディレクトリに作成）"
+if [ ! -f "$DATA_DIR/labsoldier.env" ]; then
+  cp "$APP_DIR/deploy/labsoldier.env.example" "$DATA_DIR/labsoldier.env"
+  chmod 600 "$DATA_DIR/labsoldier.env"
+  echo "!! $DATA_DIR/labsoldier.env を編集して JWT_SECRET と LAB_ALLOWED_IPS を設定してください"
   echo "!! JWT_SECRET 生成: openssl rand -hex 32"
 fi
 
@@ -58,7 +60,7 @@ systemctl enable labsoldier
 
 echo ""
 echo "=== 次の手順 ==="
-echo "1. sudo nano $APP_DIR/labsoldier.env   # JWT_SECRET と LAB_ALLOWED_IPS を設定"
-echo "2. sudo systemctl restart labsoldier   # 起動"
-echo "3. sudo systemctl status labsoldier    # 稼働確認"
+echo "1. sudo nano $DATA_DIR/labsoldier.env   # JWT_SECRET と LAB_ALLOWED_IPS を設定"
+echo "2. sudo systemctl restart labsoldier    # 起動"
+echo "3. sudo systemctl status labsoldier     # 稼働確認"
 echo "4. Caddy を入れて HTTPS 化（deploy/Caddyfile 参照）"
