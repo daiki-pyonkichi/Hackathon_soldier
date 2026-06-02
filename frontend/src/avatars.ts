@@ -1,26 +1,30 @@
 // キャラクター（アバター）の共通定義。
-// GIF 素材は public/avatars/{id}_{stage}.gif に置く（例: soldier-blue_1.gif 〜 soldier-blue_6.gif）。
+// GIF 素材は public/avatars/{id}/{id}_{stage}.gif に置く（例: soldier-armor/soldier-armor_1.gif 〜 _6.gif）。
 // 素材が揃ったら AVATAR_GIFS_READY を true にすると、絵文字から GIF 表示に切り替わる。
 
 export interface AvatarMeta {
   id: string;
   label: string;
   emoji: string; // GIF が無いときのフォールバック表示
+  gifId?: string; // GIF 素材のフォルダ/ファイル名。未指定なら id を使う
 }
 
 export const AVATARS: AvatarMeta[] = [
-  // soldier-armor のみ実GIF素材あり。他は GIF 未配置で絵文字フォールバック（モック）。
+  // すべて実GIF素材あり（red は soldier-heitai を使用）。
   { id: "soldier-armor", label: "アーマー", emoji: "🛡️" },
-  { id: "soldier-blue", label: "ブルー", emoji: "🪖" },
-  { id: "soldier-red", label: "レッド", emoji: "👮" },
-  { id: "soldier-green", label: "グリーン", emoji: "🧑‍🚀" },
-  { id: "soldier-yellow", label: "イエロー", emoji: "🧙" },
+  { id: "soldier-spear", label: "スピア", emoji: "🔱" },
+  { id: "soldier-naginata2", label: "ナギナタ", emoji: "⚔️" },
+  { id: "soldier-red", label: "歩兵", emoji: "👮", gifId: "soldier-heitai" },
 ];
 
 export const AVATAR_IDS = AVATARS.map((a) => a.id);
 
 const EMOJI_BY_ID: Record<string, string> = Object.fromEntries(
   AVATARS.map((a) => [a.id, a.emoji]),
+);
+
+const GIF_ID_BY_ID: Record<string, string> = Object.fromEntries(
+  AVATARS.map((a) => [a.id, a.gifId ?? a.id]),
 );
 
 export function avatarEmoji(id: string): string {
@@ -38,7 +42,8 @@ export function avatarStage(elapsedMin: number): number {
 }
 
 export function avatarGifSrc(id: string, stage: number): string {
-  return `/avatars/${id}_${stage}.gif`;
+  const gifId = GIF_ID_BY_ID[id] ?? id;
+  return `/avatars/${gifId}/${gifId}_${stage}.gif`;
 }
 
 // GIF 素材を public/avatars/ に置き終えたら true にする。

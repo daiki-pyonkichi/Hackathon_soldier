@@ -4,6 +4,7 @@ import {
   Legend,
   Line,
   LineChart,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -13,6 +14,9 @@ import { api } from "../api/client";
 import type { PresenceLogEntry, StatsBucket, StatsPoint, User } from "../types";
 
 const FACE: Record<string, string> = {
+  "soldier-armor": "🛡️",
+  "soldier-spear": "🔱",
+  "soldier-naginata2": "⚔️",
   "soldier-blue": "🪖",
   "soldier-red": "👮",
   "soldier-green": "🧑‍🚀",
@@ -90,6 +94,32 @@ function toYmdLocal(d: Date): string {
 
 const PAGE_DAYS = 5; // 1ページぶんの日数
 
+// ===== DFT（離散フーリエ変換）設定 =====
+// 案A: 日次サンプリング(Δt=1日) × 窓幅56日(=8週間)。週周期(7日)を k=8 のピークとして検出する。
+const DFT_WINDOW_DAYS = 56;
+
+// 実数信号の振幅スペクトルを返す。直流成分(平均)は除去。
+// 返り値: { period(周期=日), amp(振幅) } の配列（k=1..N/2）
+function dftAmplitude(signal: number[]): { k: number; period: number; amp: number }[] {
+  const N = signal.length;
+  if (N < 2) return [];
+  const mean = signal.reduce((a, b) => a + b, 0) / N;
+  const x = signal.map((v) => v - mean); // DC除去
+  const half = Math.floor(N / 2);
+  const out: { k: number; period: number; amp: number }[] = [];
+  for (let k = 1; k <= half; k++) {
+    let re = 0;
+    let im = 0;
+    for (let n = 0; n < N; n++) {
+      const ang = (-2 * Math.PI * k * n) / N;
+      re += x[n] * Math.cos(ang);
+      im += x[n] * Math.sin(ang);
+    }
+    out.push({ k, period: N / k, amp: (2 * Math.sqrt(re * re + im * im)) / N });
+  }
+  return out;
+}
+
 export function Logs({ users, meId }: { users: User[]; meId: string }) {
   // ===== ログ一覧 =====
   const [logs, setLogs] = useState<PresenceLogEntry[]>([]);
@@ -151,9 +181,24 @@ export function Logs({ users, meId }: { users: User[]; meId: string }) {
 
   // ===== 折れ線グラフ用 =====
   const [bucket, setBucket] = useState<StatsBucket>("day");
+  const [dftMode, setDftMode] = useState(false); // true: 周期解析(DFT)表示
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [statsByUser, setStatsByUser] = useState<Record<string, StatsPoint[]>>({});
   const [statsLoading, setStatsLoading] = useState(false);
+
+  // DFTモードでは日次サンプリング固定（週周期検出のため）
+  const effectiveBucket: StatsBucket = dftMode ? "day" : bucket;
+
+  // スマホ判定（凡例を縦並びにするため）
+  const [isMobile, setIsMobile] = useState(
+    () => typeof window !== "undefined" && window.matchMedia("(max-width: 640px)").matches
+  );
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 640px)");
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
 
   // 初回 users が来たタイミングで「自分」を初期選択
   const initRef = useRef(false);
@@ -166,12 +211,14 @@ export function Logs({ users, meId }: { users: User[]; meId: string }) {
   }, [users, meId]);
 
   const { fromYmd, toYmd } = useMemo(() => {
-    const conf = BUCKET_LABELS.find((b) => b.value === bucket)!;
+    const daysBack = dftMode
+      ? DFT_WINDOW_DAYS
+      : BUCKET_LABELS.find((b) => b.value === bucket)!.daysBack;
     const to = new Date();
     const from = new Date();
-    from.setDate(from.getDate() - conf.daysBack);
+    from.setDate(from.getDate() - daysBack);
     return { fromYmd: toJstYmd(from), toYmd: toJstYmd(to) };
-  }, [bucket]);
+  }, [bucket, dftMode]);
 
   useEffect(() => {
     if (selectedIds.length === 0) {
@@ -181,7 +228,9 @@ export function Logs({ users, meId }: { users: User[]; meId: string }) {
     setStatsLoading(true);
     Promise.all(
       selectedIds.map((uid) =>
-        api.getStats({ userId: uid, from: fromYmd, to: toYmd, bucket }).then((stats) => [uid, stats] as const)
+        api
+          .getStats({ userId: uid, from: fromYmd, to: toYmd, bucket: effectiveBucket })
+          .then((stats) => [uid, stats] as const)
       )
     )
       .then((entries) => {
@@ -190,10 +239,10 @@ export function Logs({ users, meId }: { users: User[]; meId: string }) {
         setStatsByUser(next);
       })
       .finally(() => setStatsLoading(false));
-  }, [selectedIds, fromYmd, toYmd, bucket]);
+  }, [selectedIds, fromYmd, toYmd, effectiveBucket]);
 
   const chartData = useMemo(() => {
-    const allKeys = generateBucketKeys(fromYmd, toYmd, bucket);
+    const allKeys = generateBucketKeys(fromYmd, toYmd, effectiveBucket);
     return allKeys.map((key) => {
       const row: Record<string, string | number> = { key };
       for (const uid of selectedIds) {
@@ -202,7 +251,34 @@ export function Logs({ users, meId }: { users: User[]; meId: string }) {
       }
       return row;
     });
-  }, [statsByUser, selectedIds, fromYmd, toYmd, bucket]);
+  }, [statsByUser, selectedIds, fromYmd, toYmd, effectiveBucket]);
+
+  // DFTスペクトル: 日次系列(0埋め)を各ユーザーぶんDFT → 周期(日)ごとの振幅
+  const spectrumData = useMemo(() => {
+    if (!dftMode) return [] as Record<string, number>[];
+    const dayKeys = generateBucketKeys(fromYmd, toYmd, "day");
+    const N = dayKeys.length;
+    const perUser: Record<string, { k: number; period: number; amp: number }[]> = {};
+    for (const uid of selectedIds) {
+      const byKey = new Map(
+        (statsByUser[uid] ?? []).map((p) => [p.key, p.totalSec / 3600])
+      );
+      const signal = dayKeys.map((key) => byKey.get(key) ?? 0); // 欠損日は0埋め
+      perUser[uid] = dftAmplitude(signal);
+    }
+    const half = Math.floor(N / 2);
+    const rows: Record<string, number>[] = [];
+    for (let k = 1; k <= half; k++) {
+      const row: Record<string, number> = { period: +(N / k).toFixed(2) };
+      for (const uid of selectedIds) {
+        const e = perUser[uid].find((a) => a.k === k);
+        row[uid] = e ? +e.amp.toFixed(3) : 0;
+      }
+      rows.push(row);
+    }
+    // 周期の短い順（左）→長い順（右）で並べる
+    return rows.sort((a, b) => a.period - b.period);
+  }, [dftMode, statsByUser, selectedIds, fromYmd, toYmd]);
 
   const toggleUser = (id: string) => {
     setSelectedIds((prev) =>
@@ -239,17 +315,28 @@ export function Logs({ users, meId }: { users: User[]; meId: string }) {
         <div className="card__head">
           <h2>Chart · 在室時間グラフ</h2>
           <span className="spacer" />
-          <div className="ranking-tabs">
-            {BUCKET_LABELS.map((b) => (
-              <button
-                key={b.value}
-                className={bucket === b.value ? "active" : ""}
-                onClick={() => setBucket(b.value)}
-              >
-                {b.label}
-              </button>
-            ))}
-          </div>
+          <button
+            className={`dft-toggle ${dftMode ? "active" : ""}`}
+            onClick={() => setDftMode((v) => !v)}
+            title="直近56日の日次在室時間を離散フーリエ変換し、周期性を可視化"
+          >
+            {dftMode ? "📈 時系列に戻す" : "🌊 周期解析 (DFT)"}
+          </button>
+          {dftMode ? (
+            <span className="dft-note">直近56日・日次サンプリング</span>
+          ) : (
+            <div className="ranking-tabs">
+              {BUCKET_LABELS.map((b) => (
+                <button
+                  key={b.value}
+                  className={bucket === b.value ? "active" : ""}
+                  onClick={() => setBucket(b.value)}
+                >
+                  {b.label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="user-picker" ref={pickerRef}>
@@ -324,10 +411,69 @@ export function Logs({ users, meId }: { users: User[]; meId: string }) {
         </div>
 
         <div className="chart-wrap">
+          {/* スマホ: 凡例（ユーザー名）をグラフの上に縦並びで表示 */}
+          {isMobile && !statsLoading && selectedIds.length > 0 && (
+            <div className="chart-legend">
+              {selectedIds.map((uid, i) => {
+                const u = users.find((x) => x.id === uid);
+                const color = LINE_COLORS[i % LINE_COLORS.length];
+                return (
+                  <span key={uid} className="chart-legend__item">
+                    <span className="chart-legend__dot" style={{ background: color }} />
+                    {u?.name ?? uid}
+                  </span>
+                );
+              })}
+            </div>
+          )}
           {statsLoading ? (
             <p className="muted" style={{ textAlign: "center", padding: 32 }}>LOADING…</p>
-          ) : selectedIds.length === 0 || chartData.length === 0 ? (
+          ) : selectedIds.length === 0 ||
+            (dftMode ? spectrumData.length === 0 : chartData.length === 0) ? (
             <p className="muted" style={{ textAlign: "center", padding: 32 }}>データがありません</p>
+          ) : dftMode ? (
+            <ResponsiveContainer width="100%" height={320}>
+              <LineChart data={spectrumData} margin={{ top: 16, right: 24, bottom: 28, left: 0 }}>
+                <CartesianGrid stroke="#2a3340" strokeDasharray="3 3" strokeOpacity={0.4} />
+                <XAxis
+                  dataKey="period"
+                  type="number"
+                  domain={["dataMin", "dataMax"]}
+                  stroke="#7d8a9c"
+                  tick={{ fontSize: 11 }}
+                  unit="d"
+                  label={{ value: "周期 (日)", position: "insideBottom", offset: -16, fill: "#7d8a9c", fontSize: 11 }}
+                />
+                <YAxis stroke="#7d8a9c" tick={{ fontSize: 11 }} label={{ value: "振幅", angle: -90, position: "insideLeft", fill: "#7d8a9c", fontSize: 11 }} />
+                <Tooltip
+                  contentStyle={{ background: "#161c25", border: "1px solid #2a3340" }}
+                  labelStyle={{ color: "#e6edf3" }}
+                  labelFormatter={(v) => `周期 ${v} 日`}
+                />
+                {!isMobile && (
+                  <Legend verticalAlign="top" align="right" wrapperStyle={{ fontSize: 12, paddingBottom: 8 }} />
+                )}
+                {/* 7日(週)周期の目印 */}
+                <ReferenceLine x={7} stroke="#f0883e" strokeDasharray="4 4" label={{ value: "7日", fill: "#f0883e", fontSize: 11, position: "top" }} />
+                {selectedIds.map((uid, i) => {
+                  const u = users.find((x) => x.id === uid);
+                  const color = LINE_COLORS[i % LINE_COLORS.length];
+                  return (
+                    <Line
+                      key={uid}
+                      type="monotone"
+                      dataKey={uid}
+                      name={u?.name ?? uid}
+                      stroke={color}
+                      strokeWidth={2.5}
+                      dot={{ r: 3, fill: color, stroke: color }}
+                      activeDot={{ r: 6 }}
+                      isAnimationActive={false}
+                    />
+                  );
+                })}
+              </LineChart>
+            </ResponsiveContainer>
           ) : (
             <ResponsiveContainer width="100%" height={320}>
               <LineChart data={chartData} margin={{ top: 16, right: 24, bottom: 8, left: 0 }}>
@@ -338,7 +484,7 @@ export function Logs({ users, meId }: { users: User[]; meId: string }) {
                   contentStyle={{ background: "#161c25", border: "1px solid #2a3340" }}
                   labelStyle={{ color: "#e6edf3" }}
                 />
-                <Legend wrapperStyle={{ fontSize: 12 }} />
+                {!isMobile && <Legend wrapperStyle={{ fontSize: 12 }} />}
                 {selectedIds.map((uid, i) => {
                   const u = users.find((x) => x.id === uid);
                   const color = LINE_COLORS[i % LINE_COLORS.length];
@@ -358,6 +504,12 @@ export function Logs({ users, meId }: { users: User[]; meId: string }) {
                 })}
               </LineChart>
             </ResponsiveContainer>
+          )}
+          {dftMode && !statsLoading && spectrumData.length > 0 && (
+            <p className="dft-caption">
+              直近56日の日次在室時間を離散フーリエ変換した振幅スペクトル。
+              <strong>7日付近のピーク</strong>＝曜日の周期性（毎週決まった曜日に在室）を示します。
+            </p>
           )}
         </div>
       </section>

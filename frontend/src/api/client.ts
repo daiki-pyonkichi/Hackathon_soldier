@@ -89,6 +89,15 @@ export const api = {
     }
   },
 
+  async updateAvatar(avatarId: string): Promise<User> {
+    const data = await request<{ user: User }>("/api/me", {
+      method: "PATCH",
+      body: JSON.stringify({ avatarId }),
+    });
+    authStorage.save(data.user, getToken() ?? "");
+    return data.user;
+  },
+
   async ping(): Promise<void> {
     await request("/api/presence/ping", {
       method: "POST",
