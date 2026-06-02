@@ -15,6 +15,8 @@ export const AVATARS: AvatarMeta[] = [
   { id: "soldier-spear", label: "スピア", emoji: "🔱" },
   { id: "soldier-naginata2", label: "ナギナタ", emoji: "⚔️" },
   { id: "soldier-red", label: "歩兵", emoji: "👮", gifId: "soldier-heitai" },
+  { id: "soldier-boxer", label: "ボクサー", emoji: "🥊" },
+  { id: "soldier-ninja", label: "忍者", emoji: "🥷" },
 ];
 
 export const AVATAR_IDS = AVATARS.map((a) => a.id);

@@ -101,7 +101,7 @@ const rankingStmt = db.prepare(`
   ORDER BY total_sec DESC
 `);
 
-export const avatarIds = ["soldier-armor", "soldier-spear", "soldier-naginata2", "soldier-red"];
+export const avatarIds = ["soldier-armor", "soldier-spear", "soldier-naginata2", "soldier-red", "soldier-boxer", "soldier-ninja"];
 
 type UserRow = {
   id: string;
