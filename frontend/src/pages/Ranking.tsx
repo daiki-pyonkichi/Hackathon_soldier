@@ -1,16 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
+import { avatarEmoji, avatarNormalPngSrc } from "../avatars";
 import type { RankingEntry, RankingPeriod } from "../types";
-
-const FACE: Record<string, string> = {
-  "soldier-armor": "🛡️",
-  "soldier-spear": "🔱",
-  "soldier-naginata2": "⚔️",
-  "soldier-blue": "🪖",
-  "soldier-red": "👮",
-  "soldier-green": "🧑‍🚀",
-  "soldier-yellow": "🧙",
-};
 
 const PERIOD_LABELS: { value: RankingPeriod; label: string }[] = [
   { value: "week",  label: "Weekly" },
@@ -87,7 +78,7 @@ export function Ranking({ meId }: { meId: string }) {
                     : `#${entry.rank}`}
                 </span>
                 <span className="ranking-row__avatar">
-                  {FACE[entry.avatarId] ?? "🙂"}
+                  <RankingAvatar avatarId={entry.avatarId} name={entry.name} />
                 </span>
                 <span className="ranking-row__name">
                   {entry.name}
@@ -113,5 +104,19 @@ export function Ranking({ meId }: { meId: string }) {
         </div>
       )}
     </section>
+  );
+}
+
+// アバター PNG。読み込み失敗時のみ絵文字にフォールバック。
+function RankingAvatar({ avatarId, name }: { avatarId: string; name: string }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) return <>{avatarEmoji(avatarId)}</>;
+  return (
+    <img
+      className="ranking-row__avatar-png"
+      src={avatarNormalPngSrc(avatarId)}
+      alt={name}
+      onError={() => setFailed(true)}
+    />
   );
 }

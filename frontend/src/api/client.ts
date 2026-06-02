@@ -98,6 +98,55 @@ export const api = {
     return data.user;
   },
 
+  async deleteMe(password: string): Promise<void> {
+    await request("/api/me", {
+      method: "DELETE",
+      body: JSON.stringify({ password }),
+    });
+    authStorage.clear();
+  },
+
+  async adminListUsers(): Promise<User[]> {
+    const data = await request<{ users: User[] }>("/api/admin/users");
+    return data.users;
+  },
+
+  async adminResetPassword(
+    userId: string,
+    newPassword: string,
+    adminPassword: string,
+  ): Promise<void> {
+    await request(`/api/admin/users/${encodeURIComponent(userId)}`, {
+      method: "PATCH",
+      body: JSON.stringify({ newPassword, adminPassword }),
+    });
+  },
+
+  async adminDeleteUser(userId: string, adminPassword: string): Promise<void> {
+    await request(`/api/admin/users/${encodeURIComponent(userId)}`, {
+      method: "DELETE",
+      body: JSON.stringify({ adminPassword }),
+    });
+  },
+
+  async adminCreateLog(input: {
+    userId: string;
+    enteredAt: string;
+    leftAt: string;
+  }): Promise<void> {
+    await request("/api/admin/logs", {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+  },
+
+  async adminDeleteLog(logId: string, adminPassword: string): Promise<void> {
+    await request(`/api/admin/logs/${encodeURIComponent(logId)}`, {
+      method: "DELETE",
+      body: JSON.stringify({ adminPassword }),
+    });
+  },
+
   async ping(): Promise<void> {
     await request("/api/presence/ping", {
       method: "POST",

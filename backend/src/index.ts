@@ -3,10 +3,11 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import express from "express";
 import cors from "cors";
-import { authRouter, meHandler, updateMeHandler } from "./routes/auth.js";
+import { authRouter, meHandler, updateMeHandler, deleteMeHandler } from "./routes/auth.js";
 import { presenceRouter } from "./routes/presence.js";
 import { statsRouter } from "./routes/stats.js";
 import { logsRouter } from "./routes/logs.js";
+import { adminRouter } from "./routes/admin.js";
 import { startTimeoutSweep } from "./lib/timeout.js";
 
 const isProd = process.env.NODE_ENV === "production";
@@ -27,9 +28,11 @@ app.get("/api/health", (_req, res) => res.json({ ok: true }));
 app.use("/api/auth", authRouter);
 app.get("/api/me", meHandler);
 app.patch("/api/me", updateMeHandler);
+app.delete("/api/me", deleteMeHandler);
 app.use("/api/presence", presenceRouter);
 app.use("/api/stats", statsRouter);
 app.use("/api/logs", logsRouter);
+app.use("/api/admin", adminRouter);
 
 // フロントのビルド成果物を同一オリジンで配信（存在する場合のみ＝本番）
 const frontendDist =

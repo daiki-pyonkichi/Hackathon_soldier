@@ -46,6 +46,13 @@ export function avatarGifSrc(id: string, stage: number): string {
   return `/avatars/${gifId}/${gifId}_${stage}.gif`;
 }
 
+// 選択画面用のデフォルト立ち絵（PNG）。動かない静止画なので一覧で見やすい。
+// 例: /avatars/soldier-armor/soldier-armor_normal.png
+export function avatarNormalPngSrc(id: string): string {
+  const gifId = GIF_ID_BY_ID[id] ?? id;
+  return `/avatars/${gifId}/${gifId}_normal.png`;
+}
+
 // GIF 素材を public/avatars/ に置き終えたら true にする。
 // true でも、GIF が無いキャラは onError で自動的に絵文字へフォールバックする。
 export const AVATAR_GIFS_READY = true;

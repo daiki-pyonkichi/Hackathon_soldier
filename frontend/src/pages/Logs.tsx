@@ -11,17 +11,9 @@ import {
   YAxis,
 } from "recharts";
 import { api } from "../api/client";
+import { avatarEmoji, avatarNormalPngSrc } from "../avatars";
+import { PasswordConfirmModal } from "../components/PasswordConfirmModal";
 import type { PresenceLogEntry, StatsBucket, StatsPoint, User } from "../types";
-
-const FACE: Record<string, string> = {
-  "soldier-armor": "🛡️",
-  "soldier-spear": "🔱",
-  "soldier-naginata2": "⚔️",
-  "soldier-blue": "🪖",
-  "soldier-red": "👮",
-  "soldier-green": "🧑‍🚀",
-  "soldier-yellow": "🧙",
-};
 
 // 4色を超えても循環するように
 const LINE_COLORS = [
@@ -120,7 +112,15 @@ function dftAmplitude(signal: number[]): { k: number; period: number; amp: numbe
   return out;
 }
 
-export function Logs({ users, meId }: { users: User[]; meId: string }) {
+export function Logs({
+  users,
+  meId,
+  isAdmin = false,
+}: {
+  users: User[];
+  meId: string;
+  isAdmin?: boolean;
+}) {
   // ===== ログ一覧 =====
   const [logs, setLogs] = useState<PresenceLogEntry[]>([]);
   const [logsError, setLogsError] = useState<string | null>(null);
@@ -130,6 +130,17 @@ export function Logs({ users, meId }: { users: User[]; meId: string }) {
   const [rangeMode, setRangeMode] = useState(false);
   const [pages, setPages] = useState(1); // フィルタ無しの時に効く: 1ページ=5日
   const [hasMore, setHasMore] = useState(true);
+  const [reloadKey, setReloadKey] = useState(0);
+
+  // === Admin: ログ追加 / 削除 ===
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [addOpen, setAddOpen] = useState(false);
+  const [addUserId, setAddUserId] = useState("");
+  const [addEnteredAt, setAddEnteredAt] = useState("");
+  const [addLeftAt, setAddLeftAt] = useState("");
+  const [addBusy, setAddBusy] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
 
   // 「もっと表示」 OR フィルタ変更で再フェッチ
   useEffect(() => {
@@ -163,7 +174,7 @@ export function Logs({ users, meId }: { users: User[]; meId: string }) {
         }
       })
       .catch((e) => setLogsError(String(e)));
-  }, [filterUserId, filterDate, filterTo, rangeMode, pages]);
+  }, [filterUserId, filterDate, filterTo, rangeMode, pages, reloadKey]);
 
   // フィルタが変わったら pages をリセット
   useEffect(() => {
@@ -178,6 +189,51 @@ export function Logs({ users, meId }: { users: User[]; meId: string }) {
   };
 
   const loadMore = () => setPages((p) => p + 1);
+
+  // パスワード確認モーダル経由で実際に削除。例外を投げると上位でエラー表示される。
+  const confirmDeleteLog = async (adminPassword: string) => {
+    if (!pendingDeleteId) return;
+    const id = pendingDeleteId;
+    setDeletingId(id);
+    try {
+      await api.adminDeleteLog(id, adminPassword);
+      setLogs((prev) => prev.filter((l) => l.id !== id));
+      setReloadKey((k) => k + 1);
+      setPendingDeleteId(null);
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const submitAddLog = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!addUserId || !addEnteredAt || !addLeftAt) {
+      setAddError("全項目を入力してください");
+      return;
+    }
+    setAddBusy(true);
+    setAddError(null);
+    try {
+      // <input type="datetime-local"> はローカル時刻 (例: "2026-06-02T09:30") なので
+      // new Date() でローカルとして解釈→ISO 文字列に直して送る
+      const enteredIso = new Date(addEnteredAt).toISOString();
+      const leftIso = new Date(addLeftAt).toISOString();
+      await api.adminCreateLog({
+        userId: addUserId,
+        enteredAt: enteredIso,
+        leftAt: leftIso,
+      });
+      setAddOpen(false);
+      setAddUserId("");
+      setAddEnteredAt("");
+      setAddLeftAt("");
+      setReloadKey((k) => k + 1);
+    } catch (err) {
+      setAddError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setAddBusy(false);
+    }
+  };
 
   // ===== 折れ線グラフ用 =====
   const [bucket, setBucket] = useState<StatsBucket>("day");
@@ -357,7 +413,8 @@ export function Logs({ users, meId }: { users: User[]; meId: string }) {
                   className="user-picker__pill"
                   style={{ borderLeft: `3px solid ${color}` }}
                 >
-                  {FACE[u.avatarId] ?? "🙂"} {u.name}
+                  <UserAvatarMini avatarId={u.avatarId} name={u.name} />
+                  {u.name}
                   <button
                     className="user-picker__remove"
                     onClick={() => toggleUser(uid)}
@@ -400,7 +457,8 @@ export function Logs({ users, meId }: { users: User[]; meId: string }) {
                           checked={active}
                           onChange={() => toggleUser(u.id)}
                         />
-                        <span>{FACE[u.avatarId] ?? "🙂"} {u.name}</span>
+                        <UserAvatarMini avatarId={u.avatarId} name={u.name} />
+                        <span>{u.name}</span>
                       </label>
                     </li>
                   );
@@ -522,7 +580,59 @@ export function Logs({ users, meId }: { users: User[]; meId: string }) {
           <span className="count">
             <strong>{logs.length}</strong> entries
           </span>
+          {isAdmin && (
+            <button
+              type="button"
+              className="ghost"
+              onClick={() => {
+                setAddOpen((v) => !v);
+                setAddError(null);
+              }}
+            >
+              {addOpen ? "× 追加を閉じる" : "＋ ログ追加"}
+            </button>
+          )}
         </div>
+
+        {isAdmin && addOpen && (
+          <form className="log-add-form" onSubmit={submitAddLog}>
+            <label className="log-filter">
+              <span>対象ユーザー</span>
+              <select
+                value={addUserId}
+                onChange={(e) => setAddUserId(e.target.value)}
+                required
+              >
+                <option value="">選択…</option>
+                {users.map((u) => (
+                  <option key={u.id} value={u.id}>{u.name}</option>
+                ))}
+              </select>
+            </label>
+            <label className="log-filter">
+              <span>入室</span>
+              <input
+                type="datetime-local"
+                value={addEnteredAt}
+                onChange={(e) => setAddEnteredAt(e.target.value)}
+                required
+              />
+            </label>
+            <label className="log-filter">
+              <span>退室</span>
+              <input
+                type="datetime-local"
+                value={addLeftAt}
+                onChange={(e) => setAddLeftAt(e.target.value)}
+                required
+              />
+            </label>
+            <button type="submit" className="primary" disabled={addBusy}>
+              {addBusy ? "追加中…" : "追加"}
+            </button>
+            {addError && <span className="auth-error log-add-form__error">{addError}</span>}
+          </form>
+        )}
 
         {/* 検索フィルタ */}
         <div className="log-filters">
@@ -578,13 +688,26 @@ export function Logs({ users, meId }: { users: User[]; meId: string }) {
 
         <div className="log-list log-list--scroll">
           {logs.map((log) => (
-            <div key={log.id} className="log-row">
-              <span className="log-row__avatar">{FACE[log.avatarId] ?? "🙂"}</span>
+            <div key={log.id} className={`log-row ${isAdmin ? "log-row--admin" : ""}`}>
+              <span className="log-row__avatar">
+                <LogAvatar avatarId={log.avatarId} name={log.name} />
+              </span>
               <span className="log-row__name">{log.name}</span>
               <span className="log-row__time">
                 {formatDateTime(log.enteredAt)} → {formatDateTime(log.leftAt)}
               </span>
               <span className="log-row__duration">{formatTime(log.durationSec)}</span>
+              {isAdmin && (
+                <button
+                  type="button"
+                  className="log-row__delete danger"
+                  onClick={() => setPendingDeleteId(log.id)}
+                  disabled={deletingId === log.id}
+                  title="このログを削除"
+                >
+                  {deletingId === log.id ? "…" : "削除"}
+                </button>
+              )}
             </div>
           ))}
           {logs.length === 0 && (
@@ -600,6 +723,48 @@ export function Logs({ users, meId }: { users: User[]; meId: string }) {
           )}
         </div>
       </section>
+
+      {/* ログ削除前の admin 本人確認 */}
+      {pendingDeleteId && (
+        <PasswordConfirmModal
+          title="在室ログ削除の確認"
+          description="このログを完全に削除します。管理者本人のパスワードを入力してください。"
+          confirmLabel="削除する"
+          destructive
+          onConfirm={confirmDeleteLog}
+          onClose={() => setPendingDeleteId(null)}
+        />
+      )}
     </>
+  );
+}
+
+// ログ行用の小さな PNG。読み込み失敗時のみ絵文字にフォールバック。
+function LogAvatar({ avatarId, name }: { avatarId: string; name: string }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) return <>{avatarEmoji(avatarId)}</>;
+  return (
+    <img
+      className="log-row__avatar-png"
+      src={avatarNormalPngSrc(avatarId)}
+      alt={name}
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
+// 比較対象ピル / ピッカーの行で使う極小 PNG。
+function UserAvatarMini({ avatarId, name }: { avatarId: string; name: string }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) {
+    return <span className="user-picker__avatar-emoji">{avatarEmoji(avatarId)}</span>;
+  }
+  return (
+    <img
+      className="user-picker__avatar-png"
+      src={avatarNormalPngSrc(avatarId)}
+      alt={name}
+      onError={() => setFailed(true)}
+    />
   );
 }

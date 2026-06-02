@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
-import { AVATARS, AVATAR_GIFS_READY, avatarGifSrc } from "../avatars";
+import { AVATARS, avatarNormalPngSrc } from "../avatars";
 import type { User } from "../types";
 
 /**
@@ -92,9 +92,8 @@ function AvatarOption({
   active: boolean;
   onSelect: () => void;
 }) {
-  // GIF があれば stage1 をプレビュー、無ければ絵文字
-  const [gifFailed, setGifFailed] = useState(false);
-  const showGif = AVATAR_GIFS_READY && !gifFailed;
+  // デフォルトの立ち絵 PNG をプレビュー。読み込み失敗時のみ絵文字にフォールバック。
+  const [imgFailed, setImgFailed] = useState(false);
   return (
     <button
       type="button"
@@ -103,15 +102,15 @@ function AvatarOption({
       className={`avatar-option ${active ? "active" : ""}`}
       onClick={onSelect}
     >
-      {showGif ? (
-        <img
-          className="avatar-option__gif"
-          src={avatarGifSrc(meta.id, 1)}
-          alt={meta.label}
-          onError={() => setGifFailed(true)}
-        />
-      ) : (
+      {imgFailed ? (
         <span className="avatar-option__face">{meta.emoji}</span>
+      ) : (
+        <img
+          className="avatar-option__png"
+          src={avatarNormalPngSrc(meta.id)}
+          alt={meta.label}
+          onError={() => setImgFailed(true)}
+        />
       )}
       <span className="avatar-option__label">{meta.label}</span>
     </button>

@@ -13,6 +13,11 @@ const insertUserStmt = db.prepare(`
   VALUES (?, ?, ?, ?, ?)
 `);
 const updateAvatarStmt = db.prepare(`UPDATE users SET avatar_id = ? WHERE id = ?`);
+const updatePasswordStmt = db.prepare(`UPDATE users SET password_hash = ? WHERE id = ?`);
+const deleteUserStmt = db.prepare(`DELETE FROM users WHERE id = ?`);
+const deletePresenceByUserStmt = db.prepare(`DELETE FROM presence WHERE user_id = ?`);
+const deleteLogsByUserStmt = db.prepare(`DELETE FROM presence_logs WHERE user_id = ?`);
+const deleteLogByIdStmt = db.prepare(`DELETE FROM presence_logs WHERE id = ?`);
 const presenceByIdStmt = db.prepare("SELECT * FROM presence WHERE user_id = ?");
 const allPresencesStmt = db.prepare("SELECT * FROM presence");
 const upsertPresenceStmt = db.prepare(`
@@ -39,12 +44,14 @@ const insertLogStmt = db.prepare(`
 const logsByUserStmt = db.prepare(`
   SELECT * FROM presence_logs WHERE user_id = ? ORDER BY left_at DESC
 `);
+// 管理者の在室ログは利用者から見えないようにすべての一覧クエリで除外する
 const logsAllStmt = db.prepare(`
   SELECT
     l.id, l.user_id, l.entered_at, l.left_at, l.duration_sec,
     u.name, u.avatar_id
   FROM presence_logs l
   JOIN users u ON u.id = l.user_id
+  WHERE u.is_admin = 0
   ORDER BY l.left_at DESC
 `);
 const logsByUserIdStmt = db.prepare(`
@@ -53,7 +60,7 @@ const logsByUserIdStmt = db.prepare(`
     u.name, u.avatar_id
   FROM presence_logs l
   JOIN users u ON u.id = l.user_id
-  WHERE l.user_id = ?
+  WHERE l.user_id = ? AND u.is_admin = 0
   ORDER BY l.left_at DESC
 `);
 const logsByDateStmt = db.prepare(`
@@ -62,7 +69,7 @@ const logsByDateStmt = db.prepare(`
     u.name, u.avatar_id
   FROM presence_logs l
   JOIN users u ON u.id = l.user_id
-  WHERE l.entered_at < ? AND l.left_at > ?
+  WHERE l.entered_at < ? AND l.left_at > ? AND u.is_admin = 0
   ORDER BY l.left_at DESC
 `);
 const logsByUserAndDateStmt = db.prepare(`
@@ -71,7 +78,7 @@ const logsByUserAndDateStmt = db.prepare(`
     u.name, u.avatar_id
   FROM presence_logs l
   JOIN users u ON u.id = l.user_id
-  WHERE l.user_id = ? AND l.entered_at < ? AND l.left_at > ?
+  WHERE l.user_id = ? AND l.entered_at < ? AND l.left_at > ? AND u.is_admin = 0
   ORDER BY l.left_at DESC
 `);
 const dailyStatsByUserStmt = db.prepare(`
@@ -89,6 +96,7 @@ const rankingStmt = db.prepare(`
   FROM users u
   LEFT JOIN presence_logs l
     ON u.id = l.user_id AND l.left_at >= ?
+  WHERE u.is_admin = 0
   GROUP BY u.id
   ORDER BY total_sec DESC
 `);
@@ -101,6 +109,7 @@ type UserRow = {
   avatar_id: string;
   password_hash: string;
   created_at: string;
+  is_admin: number;
 };
 
 type PresenceRow = {
@@ -127,6 +136,7 @@ function rowToUser(r: UserRow): User {
     name: r.name,
     avatarId: r.avatar_id,
     createdAt: r.created_at,
+    isAdmin: r.is_admin === 1,
   };
 }
 function rowToAuthUser(r: UserRow): AuthUserRecord {
@@ -156,6 +166,10 @@ export const store = {
     const row = userByNameStmt.get(name) as UserRow | undefined;
     return row ? rowToAuthUser(row) : undefined;
   },//ユーザー名から認証用ユーザー（passwordHash 付き）を取得する関数
+  getAuthUserById(id: string): AuthUserRecord | undefined {
+    const row = userByIdStmt.get(id) as UserRow | undefined;
+    return row ? rowToAuthUser(row) : undefined;
+  },//ユーザーIDから認証用ユーザー（passwordHash 付き）を取得する関数
   createUser(input: { name: string; passwordHash: string; avatarId?: string }): User {
     const count = (userCountStmt.get() as { n: number }).n;
     const id = randomUUID();
@@ -163,12 +177,27 @@ export const store = {
     const createdAt = new Date().toISOString();
     insertUserStmt.run(id, input.name, input.passwordHash, avatarId, createdAt);
     insertBlankPresenceStmt.run(id);
-    return { id, name: input.name, avatarId, createdAt };
+    return { id, name: input.name, avatarId, createdAt, isAdmin: false };
   },//新規ユーザーを作る関数（auth.ts の signup から呼ばれる）
   updateAvatar(userId: string, avatarId: string): User | undefined {
     updateAvatarStmt.run(avatarId, userId);
     return this.getUser(userId);
   },//ユーザーのアバターを変更する関数
+  updatePassword(userId: string, passwordHash: string): boolean {
+    const info = updatePasswordStmt.run(passwordHash, userId);
+    return info.changes > 0;
+  },//パスワードを変更する関数（自分の変更 or 管理者からの強制変更）
+  deleteUser(userId: string): boolean {
+    // 外部キーで参照されている子テーブルから先に消す
+    deleteLogsByUserStmt.run(userId);
+    deletePresenceByUserStmt.run(userId);
+    const info = deleteUserStmt.run(userId);
+    return info.changes > 0;
+  },//ユーザーと関連レコードを完全削除する関数
+  deleteLogById(logId: string): boolean {
+    const info = deleteLogByIdStmt.run(logId);
+    return info.changes > 0;
+  },//在室ログ1件を削除する関数（管理者操作）
   listPresences(): Presence[] {
     return (allPresencesStmt.all() as PresenceRow[]).map(rowToPresence);
   },//すべての在室情報を取得する関数
