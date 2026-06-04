@@ -31,6 +31,8 @@ body {
   background: var(--bg);
   color: var(--ink);
   min-height: 100vh;
+  /* 横方向のはみ出し（画面外スクロール）を防ぐ */
+  overflow-x: hidden;
 }
 
 body {
@@ -510,6 +512,25 @@ input::placeholder {
   color: var(--olive);
 }
 
+/* 今後追加予定の枠（選択不可） */
+.avatar-option--soon {
+  cursor: not-allowed;
+  opacity: 0.4;
+  justify-content: center;
+}
+
+.avatar-option--soon:hover {
+  border-color: var(--border);
+}
+
+/* フォームの入力エラー（パスワード不一致など） */
+.field__error {
+  color: var(--crimson);
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 11px;
+  margin-top: 2px;
+}
+
 .auth-hint {
   margin: 18px 0 0;
   padding: 10px 12px;
@@ -849,7 +870,8 @@ input::placeholder {
 
 .ranking-row {
   display: grid;
-  grid-template-columns: 36px 40px 1fr 2fr 80px;
+  /* minmax(0,..) にしないと、中身（長い名前）より縮まず行が画面外へはみ出す */
+  grid-template-columns: 36px 40px minmax(0, 1fr) minmax(0, 2fr) auto;
   align-items: center;
   gap: 12px;
   padding: 14px 16px;
@@ -888,6 +910,11 @@ input::placeholder {
   font-weight: 700;
   font-size: 15px;
   letter-spacing: 0.04em;
+  /* 長い名前は省略（…）してはみ出しを防ぐ */
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .ranking-row__bar-wrap {
@@ -928,6 +955,7 @@ input::placeholder {
   letter-spacing: 0.08em;
   color: var(--olive);
   text-align: right;
+  white-space: nowrap;
 }
 
 /* ============================================================
@@ -1009,6 +1037,7 @@ input::placeholder {
   right: 0;
   z-index: 10;
   width: 260px;
+  max-width: calc(100vw - 28px);
   margin-top: 6px;
   background: var(--surface);
   border: 1px solid var(--border-strong);
@@ -1153,7 +1182,8 @@ input::placeholder {
 
 .log-row {
   display: grid;
-  grid-template-columns: 32px 100px 1fr 80px;
+  /* minmax(0,1fr) で名前列が縮めるようにし、はみ出しを防ぐ */
+  grid-template-columns: 32px 100px minmax(0, 1fr) 80px;
   align-items: center;
   gap: 12px;
   padding: 10px 14px;
@@ -1232,6 +1262,10 @@ input::placeholder {
   font-weight: 700;
   color: var(--ink);
   letter-spacing: 0.06em;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .log-row__time {
@@ -1560,5 +1594,44 @@ button.primary.danger:hover:not(:disabled) {
     padding: 4px 8px;
     font-size: 9px;
     letter-spacing: 0.04em;
+  }
+
+  /* ヘッダーメニューはスマホだと画面左寄りに出るので、右ではなく左基準で開く
+     （右基準だと min-width 分だけ画面左にはみ出して文字が切れる） */
+  .header-menu__dropdown {
+    right: auto;
+    left: 0;
+    min-width: 180px;
+    max-width: calc(100vw - 28px);
+  }
+
+  /* ランキング行: スマホは固定列・余白・文字を詰めて収める */
+  .ranking-row {
+    grid-template-columns: 28px 30px minmax(0, 1fr) minmax(0, 1.4fr) auto;
+    gap: 8px;
+    padding: 10px 10px;
+  }
+  .ranking-row__rank {
+    font-size: 14px;
+  }
+  .ranking-row__name {
+    font-size: 13px;
+  }
+  .ranking-row__time {
+    font-size: 11px;
+  }
+
+  /* ログ行: スマホは固定列・余白を詰める */
+  .log-row {
+    grid-template-columns: 26px 78px minmax(0, 1fr) 56px;
+    gap: 8px;
+    padding: 8px 10px;
+    font-size: 11px;
+  }
+
+  /* 比較セレクタのドロップダウンも画面内に収める */
+  .user-picker__dropdown {
+    right: auto;
+    left: 0;
   }
 }
