@@ -112,9 +112,19 @@ const insertPresence = db.prepare(`
   INSERT OR IGNORE INTO presence (user_id, is_present, source, entered_at, last_seen_at)
   VALUES (?, 0, 'wifi', NULL, NULL)
 `);
+const userExistsStmt = db.prepare("SELECT 1 FROM users WHERE id = ?");
+
+// seed ユーザーの presence を入れる。
+// ただし、同じ name が別 id で既に存在する（= 削除→再登録などで UUID id になった）場合、
+// insertUser は UNIQUE(name) で無視され seed id のユーザーは作られない。
+// その状態で presence を入れると FK 違反でクラッシュするため、実在する時だけ入れる。
+function seedPresence(userId: string) {
+  if (userExistsStmt.get(userId)) insertPresence.run(userId);
+}
+
 for (const u of seedUsers) {
   insertUser.run(u.id, u.name, seedPasswordHash, u.avatarId, seedCreatedAt);
-  insertPresence.run(u.id);
+  seedPresence(u.id);
 }
 
 // 管理者シードユーザー: name=admin / password=admin1234
@@ -126,6 +136,6 @@ const insertAdmin = db.prepare(`
 insertAdmin.run("u-admin", "admin", seedAdminPasswordHash, "soldier-armor", seedCreatedAt);
 // 既存DBで admin ユーザーが居る場合、is_admin フラグを必ず立て直す
 db.prepare(`UPDATE users SET is_admin = 1 WHERE id = 'u-admin'`).run();
-insertPresence.run("u-admin");
+seedPresence("u-admin");
 
 console.log("[db] ready:", DB_PATH);
