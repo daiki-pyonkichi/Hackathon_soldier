@@ -751,6 +751,12 @@ input::placeholder {
   box-shadow: 0 0 6px rgba(240, 136, 62, 0.6);
 }
 
+/* 不在（在室判定はONだが今は在室していない）はドットを消灯色に */
+.manual-inline__state.is-away::before {
+  background: var(--muted-2);
+  box-shadow: none;
+}
+
 .manual-inline__btn {
   font-size: 10px;
   letter-spacing: 0.08em;

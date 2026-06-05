@@ -3,7 +3,14 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import express from "express";
 import cors from "cors";
-import { authRouter, meHandler, updateMeHandler, deleteMeHandler } from "./routes/auth.js";
+import {
+  authRouter,
+  meHandler,
+  updateMeHandler,
+  deleteMeHandler,
+  verifyMyPasswordHandler,
+  changeMyPasswordHandler,
+} from "./routes/auth.js";
 import { presenceRouter } from "./routes/presence.js";
 import { statsRouter } from "./routes/stats.js";
 import { logsRouter } from "./routes/logs.js";
@@ -29,6 +36,8 @@ app.get("/api/health", (_req, res) => res.json({ ok: true }));
 app.use("/api/auth", authRouter);
 app.get("/api/me", meHandler);
 app.patch("/api/me", updateMeHandler);
+app.post("/api/me/verify-password", verifyMyPasswordHandler);
+app.patch("/api/me/password", changeMyPasswordHandler);
 app.delete("/api/me", deleteMeHandler);
 app.use("/api/presence", presenceRouter);
 app.use("/api/stats", statsRouter);
