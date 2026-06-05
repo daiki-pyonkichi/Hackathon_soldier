@@ -8,17 +8,25 @@ import { api } from "../api/client";
  *
  * 状態 (manualOff) は親 (App.tsx) から渡される。
  */
+const ROLE_DESC =
+  "在室判定の手動切り替え。「退室」を押すと Wi-Fi の自動在室判定をオフにして退室扱いにします。「在室を再開」で自動判定に戻ります。";
+
 export function ManualCheckin({
   manualOff,
   onChanged,
+  compact = false,
 }: {
   manualOff: boolean;
   onChanged: () => void;
+  /** Roster ヘッダー右上に小さく置くためのコンパクト表示 */
+  compact?: boolean;
 }) {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string>("");
 
   const handle = async () => {
+    // 退室は誤操作を防ぐため確認を挟む（在室再開は確認なし）
+    if (!manualOff && !window.confirm("本当に退室しますか？")) return;
     setBusy(true);
     setMsg("");
     try {
@@ -39,6 +47,26 @@ export function ManualCheckin({
       setBusy(false);
     }
   };
+
+  // Roster ヘッダー右上に置く小さなコントロール。役割はツールチップ(title)で説明する。
+  if (compact) {
+    return (
+      <div className="manual-inline" title={ROLE_DESC}>
+        <span className={`manual-inline__state ${manualOff ? "is-off" : ""}`}>
+          {manualOff ? "退室中" : "在室判定 ON"}
+        </span>
+        <button
+          type="button"
+          className={`manual-inline__btn ${manualOff ? "is-resume" : ""}`}
+          disabled={busy}
+          onClick={handle}
+          aria-label={ROLE_DESC}
+        >
+          {busy ? "…" : manualOff ? "在室を再開" : "退室する"}
+        </button>
+      </div>
+    );
+  }
 
   return (
     <section className="card">

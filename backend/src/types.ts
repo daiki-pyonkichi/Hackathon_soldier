@@ -33,6 +33,7 @@ export interface PresenceView {
   manualOff: boolean;
   hp: number;        // 0-100 のHP値。過去ログを再生して算出
   hpAt: string;      // HP が算出された時刻 (ISO8601)
+  stage: number;     // キャラ見た目段階 1〜6 (HP軸で算出)
 }//フロントへ送るやつ
 
 export interface PresenceLog {
@@ -41,4 +42,14 @@ export interface PresenceLog {
   enteredAt: string;
   leftAt: string;
   durationSec: number;
+}
+
+export interface Todo {
+  id: string;
+  title: string;
+  assigneeIds: string[];     // 担当者ユーザーIDの配列。["all"]=全員 / []=未設定
+  dueDate: string | null;    // YYYY-MM-DD or null
+  done: boolean;
+  createdAt: string;
+  createdBy: string | null;
 }

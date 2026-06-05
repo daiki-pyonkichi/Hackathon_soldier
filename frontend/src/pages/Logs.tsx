@@ -356,13 +356,44 @@ export function Logs({
     return () => document.removeEventListener("mousedown", onClickOutside);
   }, [pickerOpen]);
 
+  // 各ドロップダウンは名前順で表示する
+  const sortedUsers = useMemo(
+    () => [...users].sort((a, b) => a.name.localeCompare(b.name)),
+    [users]
+  );
+
   const filteredPickerUsers = useMemo(
     () =>
-      users.filter((u) =>
+      sortedUsers.filter((u) =>
         u.name.toLowerCase().includes(pickerQuery.toLowerCase())
       ),
-    [users, pickerQuery]
+    [sortedUsers, pickerQuery]
   );
+
+  // スマホでは固定 320px だと縦長になりすぎるため、横長の縦横比（aspect）で描画する。
+  // 凡例を横並びにして縦の余白を空けた分、グラフ自体は大きめ（aspect を小さめ）にする。
+  // デスクトップは従来どおり固定高さ。
+  const chartSizeProps = isMobile ? { aspect: 1.25 } : { height: 320 };
+  // スマホは線・点を細め/小さめにして見やすくする。
+  const lineStrokeWidth = isMobile ? 1.5 : 2.5;
+  // スマホはツールチップが大きいとグラフ全体や下のログ欄に被るので、文字・余白を詰めてコンパクトにする。
+  const tooltipStyleProps = isMobile
+    ? {
+        contentStyle: {
+          background: "#161c25",
+          border: "1px solid #2a3340",
+          padding: "4px 8px",
+          fontSize: 10,
+          lineHeight: 1.3,
+        },
+        labelStyle: { color: "#e6edf3", fontSize: 10, marginBottom: 2 },
+        itemStyle: { padding: 0, margin: 0, fontSize: 10 },
+        allowEscapeViewBox: { x: false, y: false } as const,
+      }
+    : {
+        contentStyle: { background: "#161c25", border: "1px solid #2a3340" },
+        labelStyle: { color: "#e6edf3" },
+      };
 
   return (
     <>
@@ -490,7 +521,7 @@ export function Logs({
             (dftMode ? spectrumData.length === 0 : chartData.length === 0) ? (
             <p className="muted" style={{ textAlign: "center", padding: 32 }}>データがありません</p>
           ) : dftMode ? (
-            <ResponsiveContainer width="100%" height={320}>
+            <ResponsiveContainer width="100%" {...chartSizeProps}>
               <LineChart data={spectrumData} margin={{ top: 16, right: 24, bottom: 28, left: 0 }}>
                 <CartesianGrid stroke="#2a3340" strokeDasharray="3 3" strokeOpacity={0.4} />
                 <XAxis
@@ -504,8 +535,7 @@ export function Logs({
                 />
                 <YAxis stroke="#7d8a9c" tick={{ fontSize: 11 }} label={{ value: "振幅", angle: -90, position: "insideLeft", fill: "#7d8a9c", fontSize: 11 }} />
                 <Tooltip
-                  contentStyle={{ background: "#161c25", border: "1px solid #2a3340" }}
-                  labelStyle={{ color: "#e6edf3" }}
+                  {...tooltipStyleProps}
                   labelFormatter={(v) => `周期 ${v} 日`}
                 />
                 {!isMobile && (
@@ -523,9 +553,9 @@ export function Logs({
                       dataKey={uid}
                       name={u?.name ?? uid}
                       stroke={color}
-                      strokeWidth={2.5}
-                      dot={{ r: 3, fill: color, stroke: color }}
-                      activeDot={{ r: 6 }}
+                      strokeWidth={lineStrokeWidth}
+                      dot={{ r: isMobile ? 2 : 3, fill: color, stroke: color }}
+                      activeDot={{ r: isMobile ? 4 : 6 }}
                       isAnimationActive={false}
                     />
                   );
@@ -533,15 +563,12 @@ export function Logs({
               </LineChart>
             </ResponsiveContainer>
           ) : (
-            <ResponsiveContainer width="100%" height={320}>
+            <ResponsiveContainer width="100%" {...chartSizeProps}>
               <LineChart data={chartData} margin={{ top: 16, right: 24, bottom: 8, left: 0 }}>
                 <CartesianGrid stroke="#2a3340" strokeDasharray="3 3" strokeOpacity={0.4} />
                 <XAxis dataKey="key" stroke="#7d8a9c" tick={{ fontSize: 11 }} />
                 <YAxis stroke="#7d8a9c" tick={{ fontSize: 11 }} unit="h" />
-                <Tooltip
-                  contentStyle={{ background: "#161c25", border: "1px solid #2a3340" }}
-                  labelStyle={{ color: "#e6edf3" }}
-                />
+                <Tooltip {...tooltipStyleProps} />
                 {!isMobile && <Legend wrapperStyle={{ fontSize: 12 }} />}
                 {selectedIds.map((uid, i) => {
                   const u = users.find((x) => x.id === uid);
@@ -553,9 +580,9 @@ export function Logs({
                       dataKey={uid}
                       name={u?.name ?? uid}
                       stroke={color}
-                      strokeWidth={2.5}
-                      dot={{ r: 4, fill: color, stroke: color }}
-                      activeDot={{ r: 6 }}
+                      strokeWidth={lineStrokeWidth}
+                      dot={{ r: isMobile ? 2 : 4, fill: color, stroke: color }}
+                      activeDot={{ r: isMobile ? 4 : 6 }}
                       isAnimationActive={false}
                     />
                   );
@@ -604,7 +631,7 @@ export function Logs({
                 required
               >
                 <option value="">選択…</option>
-                {users.map((u) => (
+                {sortedUsers.map((u) => (
                   <option key={u.id} value={u.id}>{u.name}</option>
                 ))}
               </select>
@@ -643,7 +670,7 @@ export function Logs({
               onChange={(e) => setFilterUserId(e.target.value)}
             >
               <option value="">全員</option>
-              {users.map((u) => (
+              {sortedUsers.map((u) => (
                 <option key={u.id} value={u.id}>{u.name}</option>
               ))}
             </select>

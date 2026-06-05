@@ -4,19 +4,18 @@ import {
   AVATAR_GIFS_READY,
   avatarEmoji,
   avatarGifSrc,
-  avatarStage,
 } from "../avatars";
 
 /**
  * キャラクター描画コンポーネント。
- * - 見た目(GIF/絵文字): 在室経過時間の段階(1..6)で変化。GIF未配置時は絵文字フォールバック。
+ * - 見た目(GIF/絵文字): サーバーが HP軸で算出した段階(1..6)で変化。GIF未配置時は絵文字フォールバック。
  * - HPバー: サーバー算出の HP を起点に、取得時刻からの経過分でローカル補正して表示。
  */
 
-// HP 減少: 12時間 = 720分で 100% → 0%
-const DRAIN_PER_MIN = 100 / (12 * 60);
-// HP 回復: 6時間 = 360分で 0% → 100%
-const HEAL_PER_MIN = 100 / (6 * 60);
+// HP 減少: 24時間で 100% → 0%
+const DRAIN_PER_MIN = 100 / (24 * 60);
+// HP 回復: 10時間で 0% → 100%
+const HEAL_PER_MIN = 100 / (10 * 60);
 
 // サーバー算出の HP を起点に、取得時刻からの経過分でローカル補正する
 function computeHp(p: PresenceView, now: Date): number {
@@ -40,7 +39,7 @@ function stageSuffix(stage: number): string {
 export function Character({ p }: { p: PresenceView }) {
   const minutes = p.elapsedMin ?? 0;
   const isPresent = p.status === "present";
-  const stage = isPresent ? avatarStage(minutes) : 1;
+  const stage = p.stage;
   const stateClass = isPresent ? "present" : "absent";
 
   const emoji = avatarEmoji(p.avatarId);

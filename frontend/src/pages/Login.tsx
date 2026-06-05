@@ -133,11 +133,9 @@ export function Login({ onLogin }: { onLogin: (u: User) => void }) {
               ))}
               {/* 今後追加予定の枠 */}
               <div className="avatar-option avatar-option--soon" aria-disabled="true">
-                <span className="avatar-option__face">❓</span>
                 <span className="avatar-option__label">Coming soon…</span>
               </div>
               <div className="avatar-option avatar-option--soon" aria-disabled="true">
-                <span className="avatar-option__face">❓</span>
                 <span className="avatar-option__label">Coming soon…</span>
               </div>
             </div>

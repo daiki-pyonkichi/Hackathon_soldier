@@ -33,16 +33,6 @@ export function avatarEmoji(id: string): string {
   return EMOJI_BY_ID[id] ?? "🙂";
 }
 
-// 在室経過時間(分) → 成長段階 1..6
-export function avatarStage(elapsedMin: number): number {
-  if (elapsedMin < 30) return 1;
-  if (elapsedMin < 60) return 2;
-  if (elapsedMin < 120) return 3;
-  if (elapsedMin < 240) return 4;
-  if (elapsedMin < 360) return 5;
-  return 6;
-}
-
 export function avatarGifSrc(id: string, stage: number): string {
   const gifId = GIF_ID_BY_ID[id] ?? id;
   return `/avatars/${gifId}/${gifId}_${stage}.gif`;

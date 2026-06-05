@@ -43,7 +43,36 @@ db.exec(`
 
   CREATE INDEX IF NOT EXISTS idx_logs_user_left
     ON presence_logs(user_id, left_at);
+
+  CREATE TABLE IF NOT EXISTS todos (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL DEFAULT '',
+    assignee_ids TEXT NOT NULL DEFAULT '[]',
+    due_date TEXT,
+    done INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL,
+    created_by TEXT
+  );
 `);
+//todos やることリスト
+  //title するべきこと（空欄可）
+  //assignee_ids 担当者のユーザーIDをJSON配列で保持。["all"]=全員 / []=未設定
+  //due_date 期限（YYYY-MM-DD、空欄可）
+  //done 完了したか（0/1）
+
+// 旧スキーマ（単一の assignee_id）から複数担当者(assignee_ids)へ in-place マイグレーション
+const todoCols = db.pragma("table_info(todos)") as Array<{ name: string }>;
+if (!todoCols.some((c) => c.name === "assignee_ids")) {
+  db.exec(`ALTER TABLE todos ADD COLUMN assignee_ids TEXT NOT NULL DEFAULT '[]'`);
+  if (todoCols.some((c) => c.name === "assignee_id")) {
+    // 既存の単一担当者を1要素の配列へ変換（NULL/空は [] のまま）
+    db.exec(`
+      UPDATE todos
+      SET assignee_ids = json_array(assignee_id)
+      WHERE assignee_id IS NOT NULL AND assignee_id != ''
+    `);
+  }
+}
 //created_at 作成日時
   //last_seen_at 最終確認時間
   //初期データの投入（必要に応じて）
