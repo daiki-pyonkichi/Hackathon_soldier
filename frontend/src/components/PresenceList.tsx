@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { PresenceView } from "../types";
 import { Character } from "./Character";
 
@@ -8,9 +9,12 @@ import { Character } from "./Character";
 export function PresenceList({
   presences,
   error,
+  headerExtra,
 }: {
   presences: PresenceView[];
   error: string | null;
+  /** ヘッダー右上に差し込む追加コントロール（手動設定など） */
+  headerExtra?: ReactNode;
 }) {
   const presentCount = presences.filter((p) => p.status === "present").length;
 
@@ -35,6 +39,7 @@ export function PresenceList({
         <span className="count">
           <strong>{presentCount}</strong> active / {presences.length}
         </span>
+        {headerExtra}
       </div>
       {error && <p className="auth-error">取得失敗: {error}</p>}
       <div className="character-grid">

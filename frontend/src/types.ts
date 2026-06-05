@@ -33,6 +33,7 @@ export interface PresenceView {
   manualOff: boolean;
   hp: number;       // サーバーが過去ログから計算した HP (0-100)
   hpAt: string;     // HP が計算された時刻
+  stage: number;    // キャラ見た目段階 1〜6 (サーバーが HP軸で算出)
 }
 
 export type RankingPeriod = "week" | "month" | "all";
@@ -53,6 +54,16 @@ export interface PresenceLogEntry {
   enteredAt: string;
   leftAt: string;
   durationSec: number;
+}
+
+export interface Todo {
+  id: string;
+  title: string;
+  assigneeIds: string[];     // 担当者ユーザーIDの配列。["all"]=全員 / []=未設定
+  dueDate: string | null;    // YYYY-MM-DD or null
+  done: boolean;
+  createdAt: string;
+  createdBy: string | null;
 }
 
 export type StatsBucket = "day" | "week" | "month";

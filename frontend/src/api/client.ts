@@ -9,6 +9,7 @@ import type {
   SignupInput,
   StatsBucket,
   StatsPoint,
+  Todo,
   User,
 } from "../types";
 
@@ -200,5 +201,45 @@ export const api = {
       `/api/logs/stats?${qs}`
     );
     return data.stats;
+  },
+
+  async listTodos(): Promise<Todo[]> {
+    const data = await request<{ todos: Todo[] }>("/api/todos");
+    return data.todos;
+  },
+
+  async createTodo(input: {
+    title: string;
+    assigneeIds: string[];
+    dueDate: string | null;
+  }): Promise<Todo> {
+    const data = await request<{ todo: Todo }>("/api/todos", {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+    return data.todo;
+  },
+
+  async updateTodo(
+    id: string,
+    input: { title: string; assigneeIds: string[]; dueDate: string | null },
+  ): Promise<Todo> {
+    const data = await request<{ todo: Todo }>(`/api/todos/${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    });
+    return data.todo;
+  },
+
+  async setTodoDone(id: string, done: boolean): Promise<Todo> {
+    const data = await request<{ todo: Todo }>(`/api/todos/${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      body: JSON.stringify({ done }),
+    });
+    return data.todo;
+  },
+
+  async deleteTodo(id: string): Promise<void> {
+    await request(`/api/todos/${encodeURIComponent(id)}`, { method: "DELETE" });
   },
 };

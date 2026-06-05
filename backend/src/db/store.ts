@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { db } from "./database.js";
-import type { AuthUserRecord, Presence, PresenceLog, User } from "../types.js";
+import type { AuthUserRecord, Presence, PresenceLog, Todo, User } from "../types.js";
 
 const userByIdStmt = db.prepare("SELECT * FROM users WHERE id = ?");
 const userByNameStmt = db.prepare(
@@ -101,6 +101,18 @@ const rankingStmt = db.prepare(`
   ORDER BY total_sec DESC
 `);
 
+// --- todos (やることリスト) 用の SQL ---
+const allTodosStmt = db.prepare(`SELECT * FROM todos ORDER BY created_at DESC`);
+const insertTodoStmt = db.prepare(`
+  INSERT INTO todos (id, title, assignee_ids, due_date, done, created_at, created_by)
+  VALUES (?, ?, ?, ?, 0, ?, ?)
+`);
+const updateTodoStmt = db.prepare(`
+  UPDATE todos SET title = ?, assignee_ids = ?, due_date = ? WHERE id = ?
+`);
+const setTodoDoneStmt = db.prepare(`UPDATE todos SET done = ? WHERE id = ?`);
+const deleteTodoStmt = db.prepare(`DELETE FROM todos WHERE id = ?`);
+
 export const avatarIds = ["soldier-armor", "soldier-spear", "soldier-naginata2", "soldier-red", "soldier-boxer", "soldier-ninja"];
 
 type UserRow = {
@@ -129,6 +141,16 @@ type PresenceLogRow = {
   duration_sec: number;
 };
 
+type TodoRow = {
+  id: string;
+  title: string;
+  assignee_ids: string; // JSON 配列の文字列
+  due_date: string | null;
+  done: number;
+  created_at: string;
+  created_by: string | null;
+};
+
 //ここからデータベースの命名規則をアプリケーションの命名規則に変換する関数
 function rowToUser(r: UserRow): User {
   return {
@@ -150,6 +172,24 @@ function rowToPresence(r: PresenceRow): Presence {
     enteredAt: r.entered_at,
     lastSeenAt: r.last_seen_at,
     manualOff: r.manual_off === 1,
+  };
+}
+function rowToTodo(r: TodoRow): Todo {
+  let assigneeIds: string[] = [];
+  try {
+    const parsed = JSON.parse(r.assignee_ids);
+    if (Array.isArray(parsed)) assigneeIds = parsed.filter((x): x is string => typeof x === "string");
+  } catch {
+    assigneeIds = [];
+  }
+  return {
+    id: r.id,
+    title: r.title,
+    assigneeIds,
+    dueDate: r.due_date,
+    done: r.done === 1,
+    createdAt: r.created_at,
+    createdBy: r.created_by,
   };
 }
 
@@ -296,4 +336,52 @@ export const store = {
       totalSec: r.total_sec,
     }));
   },//期間内の在室合計秒数ランキングを返す
+
+  listTodos(): Todo[] {
+    return (allTodosStmt.all() as TodoRow[]).map(rowToTodo);
+  },//やることリストを全件取得する関数
+  createTodo(input: {
+    title: string;
+    assigneeIds: string[];
+    dueDate: string | null;
+    createdBy: string | null;
+  }): Todo {
+    const id = randomUUID();
+    const createdAt = new Date().toISOString();
+    insertTodoStmt.run(
+      id,
+      input.title,
+      JSON.stringify(input.assigneeIds),
+      input.dueDate,
+      createdAt,
+      input.createdBy,
+    );
+    return {
+      id,
+      title: input.title,
+      assigneeIds: input.assigneeIds,
+      dueDate: input.dueDate,
+      done: false,
+      createdAt,
+      createdBy: input.createdBy,
+    };
+  },//やることを1件追加する関数
+  updateTodo(id: string, input: {
+    title: string;
+    assigneeIds: string[];
+    dueDate: string | null;
+  }): Todo | undefined {
+    updateTodoStmt.run(input.title, JSON.stringify(input.assigneeIds), input.dueDate, id);
+    const row = db.prepare("SELECT * FROM todos WHERE id = ?").get(id) as TodoRow | undefined;
+    return row ? rowToTodo(row) : undefined;
+  },//やることの内容を編集する関数
+  setTodoDone(id: string, done: boolean): Todo | undefined {
+    setTodoDoneStmt.run(done ? 1 : 0, id);
+    const row = db.prepare("SELECT * FROM todos WHERE id = ?").get(id) as TodoRow | undefined;
+    return row ? rowToTodo(row) : undefined;
+  },//完了/未完了を切り替える関数
+  deleteTodo(id: string): boolean {
+    const info = deleteTodoStmt.run(id);
+    return info.changes > 0;
+  },//やることを削除する関数
 };

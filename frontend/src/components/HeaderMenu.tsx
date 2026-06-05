@@ -10,8 +10,10 @@ export function HeaderMenu({
   onDeleteAccount,
   onLogout,
 }: {
-  onAvatarChange: () => void;
-  onDeleteAccount: () => void;
+  // キャラ変更が不要なユーザー（管理者など）では undefined を渡す → 項目自体を出さない
+  onAvatarChange?: () => void;
+  // 管理者など、自分でアカウント削除させたくないユーザーでは undefined を渡す → 項目自体を出さない
+  onDeleteAccount?: () => void;
   onLogout: () => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -59,17 +61,21 @@ export function HeaderMenu({
       </button>
       {open && (
         <div className="header-menu__dropdown" role="menu">
-          <button type="button" role="menuitem" onClick={run(onAvatarChange)}>
-            キャラ変更
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            className="header-menu__danger"
-            onClick={run(onDeleteAccount)}
-          >
-            アカウント削除
-          </button>
+          {onAvatarChange && (
+            <button type="button" role="menuitem" onClick={run(onAvatarChange)}>
+              キャラ変更
+            </button>
+          )}
+          {onDeleteAccount && (
+            <button
+              type="button"
+              role="menuitem"
+              className="header-menu__danger"
+              onClick={run(onDeleteAccount)}
+            >
+              アカウント削除
+            </button>
+          )}
           <button type="button" role="menuitem" onClick={run(onLogout)}>
             Logout
           </button>

@@ -8,6 +8,7 @@ import { presenceRouter } from "./routes/presence.js";
 import { statsRouter } from "./routes/stats.js";
 import { logsRouter } from "./routes/logs.js";
 import { adminRouter } from "./routes/admin.js";
+import { todosRouter } from "./routes/todos.js";
 import { startTimeoutSweep } from "./lib/timeout.js";
 
 const isProd = process.env.NODE_ENV === "production";
@@ -33,6 +34,7 @@ app.use("/api/presence", presenceRouter);
 app.use("/api/stats", statsRouter);
 app.use("/api/logs", logsRouter);
 app.use("/api/admin", adminRouter);
+app.use("/api/todos", todosRouter);
 
 // フロントのビルド成果物を同一オリジンで配信（存在する場合のみ＝本番）
 const frontendDist =

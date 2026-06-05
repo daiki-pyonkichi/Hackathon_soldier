@@ -714,6 +714,62 @@ input::placeholder {
   color: var(--olive);
 }
 
+/* Roster ヘッダー右上に置く手動設定のコンパクト表示 */
+.manual-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.manual-inline__state {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+/* 在室判定中は緑、退室中は琥珀色の状態ドット */
+.manual-inline__state::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--olive);
+  box-shadow: 0 0 6px rgba(194, 207, 58, 0.6);
+}
+
+.manual-inline__state.is-off {
+  color: var(--amber);
+}
+.manual-inline__state.is-off::before {
+  background: var(--amber);
+  box-shadow: 0 0 6px rgba(240, 136, 62, 0.6);
+}
+
+.manual-inline__btn {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  padding: 5px 10px;
+  white-space: nowrap;
+}
+
+/* 退室中は「在室を再開」を目立たせる */
+.manual-inline__btn.is-resume {
+  background: var(--olive);
+  color: #0a0d12;
+  border-color: var(--olive);
+  font-weight: 700;
+}
+.manual-inline__btn.is-resume:hover:not(:disabled) {
+  background: var(--olive-deep);
+  border-color: var(--olive-deep);
+}
+
 .spacer {
   flex: 1;
 }
@@ -845,8 +901,9 @@ input::placeholder {
 /* スマホ: グラフ上のユーザー名凡例（縦並び） */
 .chart-legend {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 4px 14px;
   margin: 0 4px 10px;
   font-size: 12px;
 }
@@ -870,8 +927,9 @@ input::placeholder {
 
 .ranking-row {
   display: grid;
-  /* minmax(0,..) にしないと、中身（長い名前）より縮まず行が画面外へはみ出す */
-  grid-template-columns: 36px 40px minmax(0, 1fr) minmax(0, 2fr) auto;
+  /* minmax(0,..) にしないと、中身（長い名前）より縮まず行が画面外へはみ出す。
+     最後の時刻列は固定幅にしないと「15h 34m」「0m」など文字数差でバーの長さがズレるため固定。 */
+  grid-template-columns: 36px 40px minmax(0, 1fr) minmax(0, 2fr) 72px;
   align-items: center;
   gap: 12px;
   padding: 14px 16px;
@@ -1088,6 +1146,18 @@ input::placeholder {
   background: var(--bg-2);
   border: 1px solid var(--border);
   padding: 16px 8px 8px;
+}
+
+/* グラフをタップ/クリックすると recharts の svg やラッパーにフォーカスが当たり、
+   ブラウザ標準の青いフォーカス枠が svg の輪郭に沿って出る。プロットの見た目とズレて
+   見えるだけの不要な装飾なので消す。 */
+.chart-wrap .recharts-wrapper:focus,
+.chart-wrap .recharts-wrapper:focus-visible,
+.chart-wrap .recharts-surface:focus,
+.chart-wrap .recharts-surface:focus-visible,
+.chart-wrap svg:focus,
+.chart-wrap svg:focus-visible {
+  outline: none;
 }
 
 .log-filters {
@@ -1557,7 +1627,31 @@ button.primary.danger:hover:not(:disabled) {
   }
 
   .terminal__title {
-    font-size: 34px;
+    font-size: 30px;
+  }
+
+  /* スマホは画面幅に対して文字が大きく、グラフなどの中身が相対的に小さく見えるので、
+     見出し・カウント・ボタン類を一回り小さくしてバランスを取る。 */
+  .ops-bar__title {
+    font-size: 26px;
+  }
+  .ops-bar__sub {
+    font-size: 10px;
+    letter-spacing: 0.1em;
+  }
+  .card__head h2 {
+    font-size: 17px;
+  }
+  .card__head .count {
+    font-size: 10px;
+  }
+  .card__head .count strong {
+    font-size: 14px;
+  }
+  button,
+  .btn {
+    font-size: 11px;
+    padding: 8px 14px;
   }
 
   /* スマホ: カードヘッダーを折り返し可能にして、タイトルとボタンは同じ行に並べる */
@@ -1605,33 +1699,463 @@ button.primary.danger:hover:not(:disabled) {
     max-width: calc(100vw - 28px);
   }
 
-  /* ランキング行: スマホは固定列・余白・文字を詰めて収める */
+  /* 在室メンバー: スマホは横幅が狭く1列になりがちなので、明示的に2列にする */
+  .character-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /* ランキング行: スマホは固定列・余白・文字を詰めて収める。
+     時刻列はバーが揃うよう固定幅にする。 */
   .ranking-row {
-    grid-template-columns: 28px 30px minmax(0, 1fr) minmax(0, 1.4fr) auto;
+    grid-template-columns: 28px 30px minmax(0, 1.3fr) minmax(0, 1fr) 52px;
     gap: 8px;
     padding: 10px 10px;
   }
   .ranking-row__rank {
     font-size: 14px;
   }
+  /* スマホは省略（…）せず2行に折り返して名前を全部見せる */
   .ranking-row__name {
     font-size: 13px;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    line-height: 1.25;
+    word-break: break-word;
   }
   .ranking-row__time {
     font-size: 11px;
   }
 
-  /* ログ行: スマホは固定列・余白を詰める */
-  .log-row {
-    grid-template-columns: 26px 78px minmax(0, 1fr) 56px;
-    gap: 8px;
-    padding: 8px 10px;
+  /* 比較対象ピッカー: スマホは縦積みにして「選択」ボタンとユーザー表示の重なりを防ぐ。
+     グラフ周りのUIはスマホだと大きすぎてグラフが小さく見えるので、全体的に一回り小さくする。 */
+  .user-picker {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+  }
+  .user-picker__label {
+    margin-right: 0;
+    font-size: 10px;
+  }
+  /* 選択済みユーザーは折り返さず、横幅に収まらなくなったらこのボックスだけ横スクロール。
+     width/max-width を固定しないと中身に合わせて伸び、スクロールせず画面ごとはみ出してしまう。 */
+  .user-picker__selected {
+    flex: 0 1 auto;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 6px;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-x;
+    scrollbar-width: thin;
+  }
+  .user-picker__pill {
+    flex: 0 0 auto;
+    padding: 3px 3px 3px 6px;
+    font-size: 11px;
+    white-space: nowrap;
+  }
+  .user-picker__avatar-png {
+    width: 15px;
+    height: 20px;
+  }
+  .user-picker__toggle {
+    align-self: flex-start;
+    padding: 6px 12px;
     font-size: 11px;
   }
 
-  /* 比較セレクタのドロップダウンも画面内に収める */
+  /* グラフ上部のタブ・凡例もスマホでは小さめに */
+  .ranking-tabs button {
+    font-size: 10px;
+    padding: 7px 8px;
+  }
+  .chart-legend__item {
+    font-size: 11px;
+  }
+
+  /* ログ行: スマホは横1列に詰め込むと時刻が折り返して崩れるので、
+     アバターを左に置き、名前（上）と入退室時刻（下）を2行に積む。 */
+  .log-row {
+    grid-template-columns: 26px minmax(0, 1fr) auto;
+    grid-template-areas:
+      "avatar name     duration"
+      "avatar time     time";
+    column-gap: 8px;
+    row-gap: 2px;
+    align-items: center;
+    padding: 8px 10px;
+    font-size: 11px;
+  }
+  .log-row--admin {
+    grid-template-columns: 26px minmax(0, 1fr) auto auto;
+    grid-template-areas:
+      "avatar name duration delete"
+      "avatar time time     time";
+  }
+  .log-row__avatar {
+    grid-area: avatar;
+    align-self: center;
+  }
+  /* 名前は省略せず最大2行で全部見せる */
+  .log-row__name {
+    grid-area: name;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    line-height: 1.2;
+    word-break: break-word;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+  /* 入退室時刻は1行に収める（折り返さない） */
+  .log-row__time {
+    grid-area: time;
+    white-space: nowrap;
+    font-size: 10px;
+  }
+  .log-row__duration {
+    grid-area: duration;
+  }
+  .log-row__delete {
+    grid-area: delete;
+    align-self: center;
+  }
+
+  /* 比較セレクタのドロップダウン: スマホはインライン展開だと画面全体が動いて疲れるので、
+     絶対配置の小さめの浮動ボックスにして、空間をあまり圧迫しないようにする。 */
   .user-picker__dropdown {
+    position: absolute;
     right: auto;
     left: 0;
+    width: 200px;
+    margin-top: 6px;
   }
+  .user-picker__search {
+    padding: 8px 10px;
+    font-size: 11px;
+  }
+  .user-picker__list {
+    max-height: 160px;
+  }
+  .user-picker__row {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+
+  /* やることリストの登録フォームは縦並びに */
+  .todo-form > input[type="text"],
+  .todo-form .todo-picker,
+  .todo-form .todo-due,
+  .todo-form .todo-picker__toggle {
+    flex: 1 1 100%;
+    max-width: 100%;
+    width: 100%;
+  }
+}
+
+/* ============================================================
+   To Do list（やることリスト）
+   ============================================================ */
+
+.todo-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+  align-items: center;
+}
+
+.todo-form > input[type="text"] {
+  flex: 1 1 220px;
+  min-width: 0;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 13px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-2);
+  color: var(--ink);
+  outline: none;
+}
+
+.todo-form input[type="date"],
+.todo-form input[type="datetime-local"] {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 13px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-2);
+  color: var(--ink);
+  outline: none;
+}
+
+.todo-form input[type="date"]:focus,
+.todo-form input[type="datetime-local"]:focus {
+  border-color: var(--olive);
+  box-shadow: 0 0 0 3px rgba(194, 207, 58, 0.18);
+}
+
+/* 担当者を複数選択するドロップダウン */
+.todo-picker {
+  position: relative;
+  /* inline-block ボタンを直接入れると行ボックスの余白分だけ箱が高くなり、
+     top:100% のドロップダウンがボタンの下に隙間を空けて出てしまう。
+     flex にして箱の高さをボタンぴったりにし、ドロップダウンをボタン直下に出す。 */
+  display: flex;
+}
+
+.todo-picker__toggle {
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  padding: 10px 14px;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.todo-picker__dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 10;
+  width: 220px;
+  max-width: calc(100vw - 28px);
+  margin-top: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+.todo-picker__list {
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+  /* 全員＋メンバー数が多いとカードの下までドロップダウンが伸びてしまうので、
+     高さを抑えて、はみ出す分はこのリスト内でスクロールさせる。 */
+  max-height: 168px;
+  overflow-y: auto;
+}
+
+.todo-picker__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.todo-picker__row:hover {
+  background: var(--bg-2);
+}
+
+.todo-picker__row input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--olive);
+}
+
+/* 期限入力（日付＋時刻トグル） */
+.todo-due {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.todo-due__time-toggle {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.todo-due__time-toggle input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--olive);
+}
+
+/* 完了取り消しバナー */
+.todo-undo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  border: 1px solid var(--olive);
+  background: rgba(194, 207, 58, 0.1);
+  font-size: 13px;
+}
+
+.todo-undo span {
+  flex: 1;
+  min-width: 0;
+}
+
+.todo-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.todo-list--done {
+  margin-top: 10px;
+}
+
+.todo-empty {
+  padding: 14px;
+  text-align: center;
+  border: 1px dashed var(--border);
+}
+
+.todo-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  background: var(--bg-2);
+}
+
+.todo-item input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--olive);
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.todo-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.todo-title {
+  font-size: 14px;
+  color: var(--ink);
+  word-break: break-word;
+}
+
+.todo-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.todo-chip {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.todo-item--done .todo-title {
+  text-decoration: line-through;
+  color: var(--muted);
+}
+
+/* タスク行の操作ボタン群。デスクトップは横並び表示、モバイルはケバブメニューに集約。 */
+.todo-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* ケバブ(⋮)メニュー。デスクトップでは非表示（横並びボタンを使う）。 */
+.todo-item__menu {
+  display: none;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.todo-item__menu-toggle {
+  padding: 4px 10px;
+  font-size: 18px;
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+.todo-item__menu-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 30;
+  display: grid;
+  min-width: 120px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+.todo-item__menu-dropdown button {
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  padding: 12px 16px;
+  text-align: left;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.todo-item__menu-dropdown button:last-child {
+  border-bottom: 0;
+}
+
+.todo-item__menu-dropdown button:hover:not(:disabled) {
+  background: var(--surface-2);
+}
+
+.todo-item__menu-dropdown button.todo-item__menu-danger {
+  color: var(--crimson);
+}
+
+.todo-item__menu-dropdown button.todo-item__menu-danger:hover:not(:disabled) {
+  background: rgba(248, 81, 73, 0.12);
+}
+
+/* タスク行: 画面が狭くなると横並びの編集/削除がタイトルや担当者を圧迫するので、
+   早めに（640px より手前で）右上のケバブメニューへ集約する。
+   ※基本ルール(.todo-actions / .todo-item__menu)の後ろに置かないと後勝ちで効かないので注意。 */
+@media (max-width: 768px) {
+  .todo-actions {
+    display: none;
+  }
+  .todo-item__menu {
+    display: block;
+    align-self: flex-start;
+  }
+}
+
+.todo-item--editing {
+  display: block;
+}
+
+.todo-item--editing .todo-form {
+  margin-bottom: 0;
+}
+
+.todo-done-toggle {
+  margin-top: 14px;
+  width: 100%;
+  text-align: left;
 }

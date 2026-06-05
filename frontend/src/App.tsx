@@ -3,6 +3,7 @@ import { api } from "./api/client";
 import { usePresencePing } from "./hooks/usePresencePing";
 import { PresenceList } from "./components/PresenceList";
 import { ManualCheckin } from "./components/ManualCheckin";
+import { TodoList } from "./components/TodoList";
 import { AvatarModal } from "./components/AvatarModal";
 import { AccountDeleteModal } from "./components/AccountDeleteModal";
 import { HeaderMenu } from "./components/HeaderMenu";
@@ -85,8 +86,10 @@ function App() {
           <span className="who">{me.name}</span>
           {me.isAdmin && <span className="admin-tag">ADMIN</span>}
           <HeaderMenu
-            onAvatarChange={() => setAvatarModalOpen(true)}
-            onDeleteAccount={() => setDeleteModalOpen(true)}
+            // 管理者にはキャラクターを持たせないので、キャラ変更メニューも出さない
+            onAvatarChange={me.isAdmin ? undefined : () => setAvatarModalOpen(true)}
+            // 管理者は自身のアカウントを削除できないようメニュー項目自体を出さない
+            onDeleteAccount={me.isAdmin ? undefined : () => setDeleteModalOpen(true)}
             onLogout={logout}
           />
         </div>
@@ -140,11 +143,25 @@ function App() {
 
       {activeTab === "home" && (
         <>
-          <PresenceList presences={presences} error={presenceError} />
-          {/* 管理者は在室判定対象外なので、手動チェックインの UI は出さない */}
-          {!me.isAdmin && (
-            <ManualCheckin manualOff={manualOff} onChanged={fetchPresences} />
-          )}
+          <PresenceList
+            presences={presences}
+            error={presenceError}
+            // 手動設定は独立カードをやめ、Roster ヘッダー右上に小さく置く。
+            // 管理者は在室判定対象外なので出さない。
+            headerExtra={
+              !me.isAdmin ? (
+                <ManualCheckin
+                  manualOff={manualOff}
+                  onChanged={fetchPresences}
+                  compact
+                />
+              ) : undefined
+            }
+          />
+          {/* 研究室のやることリスト。担当者は在室メンバーから選択 */}
+          <TodoList
+            users={presences.map((p) => ({ id: p.userId, name: p.name }))}
+          />
         </>
       )}
       {activeTab === "ranking" && <Ranking meId={me.id} />}

@@ -4,6 +4,7 @@ import { getAuthenticatedUser } from "../middleware/auth.js";
 import { getClientIp, isLabIp } from "../middleware/ipCheck.js";
 import { judgeStatus, elapsedMinutes } from "../lib/judge.js";
 import { computeHp } from "../lib/hp.js";
+import { computeStage } from "../lib/stage.js";
 import type { Presence, PresenceView } from "../types.js";
 
 /**
@@ -116,18 +117,21 @@ presenceRouter.get("/", (req, res) => {
       manualOff: false,
     };
     const logs = store.listPresenceLogsByUser(u.id);
-    const hp = computeHp(logs, p, now);
+    const { hp, hpZeroAt } = computeHp(logs, p, now);
+    const status = judgeStatus(p);
+    const elapsedMin = elapsedMinutes(p.enteredAt);
     return {
       userId: u.id,
       name: u.name,
       avatarId: u.avatarId,
-      status: judgeStatus(p),
+      status,
       lastSeenAt: p.lastSeenAt,
-      elapsedMin: elapsedMinutes(p.enteredAt),
+      elapsedMin,
       enteredAt: p.enteredAt,
       manualOff: p.manualOff,
       hp,
       hpAt: now.toISOString(),
+      stage: computeStage({ hp, elapsedMin, status, hpZeroAt, now }),
     };
   });
   return res.json({ presences: view });
