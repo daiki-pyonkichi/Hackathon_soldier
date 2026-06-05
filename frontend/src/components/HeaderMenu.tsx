@@ -7,11 +7,14 @@ import { useEffect, useRef, useState } from "react";
  */
 export function HeaderMenu({
   onAvatarChange,
+  onChangePassword,
   onDeleteAccount,
   onLogout,
 }: {
   // キャラ変更が不要なユーザー（管理者など）では undefined を渡す → 項目自体を出さない
   onAvatarChange?: () => void;
+  // パスワード変更。不要なユーザーでは undefined を渡す → 項目自体を出さない
+  onChangePassword?: () => void;
   // 管理者など、自分でアカウント削除させたくないユーザーでは undefined を渡す → 項目自体を出さない
   onDeleteAccount?: () => void;
   onLogout: () => void;
@@ -64,6 +67,11 @@ export function HeaderMenu({
           {onAvatarChange && (
             <button type="button" role="menuitem" onClick={run(onAvatarChange)}>
               キャラ変更
+            </button>
+          )}
+          {onChangePassword && (
+            <button type="button" role="menuitem" onClick={run(onChangePassword)}>
+              パスワード変更
             </button>
           )}
           {onDeleteAccount && (

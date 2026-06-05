@@ -5,6 +5,7 @@ import { PresenceList } from "./components/PresenceList";
 import { ManualCheckin } from "./components/ManualCheckin";
 import { TodoList } from "./components/TodoList";
 import { AvatarModal } from "./components/AvatarModal";
+import { PasswordChangeModal } from "./components/PasswordChangeModal";
 import { AccountDeleteModal } from "./components/AccountDeleteModal";
 import { HeaderMenu } from "./components/HeaderMenu";
 import { Login } from "./pages/Login";
@@ -22,6 +23,7 @@ function App() {
   const [presenceError, setPresenceError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("home");
   const [avatarModalOpen, setAvatarModalOpen] = useState(false);
+  const [passwordModalOpen, setPasswordModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
 
   useEffect(() => {
@@ -53,6 +55,7 @@ function App() {
 
   const myPresence = me ? presences.find((p) => p.userId === me.id) : null;
   const manualOff = myPresence?.manualOff ?? false;
+  const isPresent = myPresence?.status === "present";
 
   // ログイン中かつ退室中でない時のみ ping を発信。管理者は在室判定の対象外。
   usePresencePing(me !== null && !manualOff && !me.isAdmin);
@@ -88,6 +91,8 @@ function App() {
           <HeaderMenu
             // 管理者にはキャラクターを持たせないので、キャラ変更メニューも出さない
             onAvatarChange={me.isAdmin ? undefined : () => setAvatarModalOpen(true)}
+            // パスワード変更は全アカウント共通で可能
+            onChangePassword={() => setPasswordModalOpen(true)}
             // 管理者は自身のアカウントを削除できないようメニュー項目自体を出さない
             onDeleteAccount={me.isAdmin ? undefined : () => setDeleteModalOpen(true)}
             onLogout={logout}
@@ -101,6 +106,9 @@ function App() {
           onClose={() => setAvatarModalOpen(false)}
           onSaved={(u) => setMe(u)}
         />
+      )}
+      {passwordModalOpen && (
+        <PasswordChangeModal onClose={() => setPasswordModalOpen(false)} />
       )}
       {deleteModalOpen && (
         <AccountDeleteModal
@@ -152,6 +160,7 @@ function App() {
               !me.isAdmin ? (
                 <ManualCheckin
                   manualOff={manualOff}
+                  present={isPresent}
                   onChanged={fetchPresences}
                   compact
                 />

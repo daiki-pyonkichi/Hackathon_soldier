@@ -90,6 +90,49 @@ export function updateMeHandler(req: import("express").Request, res: import("exp
   return res.json({ user: updated });
 }
 
+// POST /api/me/verify-password : { password } が現在のパスワードと一致するか確認する。
+// パスワード変更フローの1段階目（本人確認）に使う。
+export function verifyMyPasswordHandler(req: import("express").Request, res: import("express").Response) {
+  const user = getAuthenticatedUser(req);
+  if (!user) return res.status(401).json({ error: "unauthorized" });
+
+  const password = String((req.body as { password?: unknown })?.password ?? "");
+  if (!password) return res.status(400).json({ error: "password is required" });
+
+  const authUser = store.getAuthUserByName(user.name);
+  if (!authUser || !verifyPassword(password, authUser.passwordHash)) {
+    return res.status(401).json({ error: "password is incorrect" });
+  }
+  return res.json({ ok: true });
+}
+
+// PATCH /api/me/password : { currentPassword, newPassword } で自分のパスワードを変更。
+// 現在のパスワードを再確認した上で更新する（確認用との一致はフロント側で検証済み）。
+export function changeMyPasswordHandler(req: import("express").Request, res: import("express").Response) {
+  const user = getAuthenticatedUser(req);
+  if (!user) return res.status(401).json({ error: "unauthorized" });
+
+  const body = req.body as { currentPassword?: unknown; newPassword?: unknown };
+  const currentPassword = String(body?.currentPassword ?? "");
+  const newPassword = String(body?.newPassword ?? "");
+
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ error: "currentPassword and newPassword are required" });
+  }
+  if (newPassword.length < 8) {
+    return res.status(400).json({ error: "password must be at least 8 characters" });
+  }
+
+  const authUser = store.getAuthUserByName(user.name);
+  if (!authUser || !verifyPassword(currentPassword, authUser.passwordHash)) {
+    return res.status(401).json({ error: "current password is incorrect" });
+  }
+
+  const ok = store.updatePassword(user.id, hashPassword(newPassword));
+  if (!ok) return res.status(404).json({ error: "user not found" });
+  return res.json({ ok: true });
+}
+
 // DELETE /api/me : 自分のアカウントを削除。{ password } で本人確認する
 export function deleteMeHandler(req: import("express").Request, res: import("express").Response) {
   const user = getAuthenticatedUser(req);

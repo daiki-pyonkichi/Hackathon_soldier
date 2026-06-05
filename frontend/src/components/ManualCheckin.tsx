@@ -13,16 +13,22 @@ const ROLE_DESC =
 
 export function ManualCheckin({
   manualOff,
+  present,
   onChanged,
   compact = false,
 }: {
   manualOff: boolean;
+  /** 現在「在室中」か。在室中のときだけ退室できる */
+  present: boolean;
   onChanged: () => void;
   /** Roster ヘッダー右上に小さく置くためのコンパクト表示 */
   compact?: boolean;
 }) {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string>("");
+
+  // 退室できるのは在室中のときだけ。退室中(manualOff)は「在室を再開」なので常に押せる。
+  const disabled = busy || (!manualOff && !present);
 
   const handle = async () => {
     // 退室は誤操作を防ぐため確認を挟む（在室再開は確認なし）
@@ -52,15 +58,18 @@ export function ManualCheckin({
   if (compact) {
     return (
       <div className="manual-inline" title={ROLE_DESC}>
-        <span className={`manual-inline__state ${manualOff ? "is-off" : ""}`}>
-          {manualOff ? "退室中" : "在室判定 ON"}
+        <span
+          className={`manual-inline__state ${manualOff ? "is-off" : !present ? "is-away" : ""}`}
+        >
+          {manualOff ? "退室中" : present ? "在室中" : "不在"}
         </span>
         <button
           type="button"
           className={`manual-inline__btn ${manualOff ? "is-resume" : ""}`}
-          disabled={busy}
+          disabled={disabled}
           onClick={handle}
           aria-label={ROLE_DESC}
+          title={!manualOff && !present ? "在室中のみ退室できます" : undefined}
         >
           {busy ? "…" : manualOff ? "在室を再開" : "退室する"}
         </button>
@@ -76,12 +85,14 @@ export function ManualCheckin({
       <p className="muted" style={{ margin: "0 0 16px" }}>
         {manualOff
           ? "現在「退室中」です。再開するまで Wi-Fi 自動判定はオフ。"
-          : "明示的に退室する場合のみ押してください。"}
+          : present
+            ? "明示的に退室する場合のみ押してください。"
+            : "在室中のみ退室できます。"}
       </p>
       <div className="manual-row">
         <button
           className="primary"
-          disabled={busy}
+          disabled={disabled}
           onClick={handle}
         >
           {busy ? "…" : manualOff ? "在室を再開する" : "退室する"}

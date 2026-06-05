@@ -99,6 +99,22 @@ export const api = {
     return data.user;
   },
 
+  // パスワード変更フロー1段階目: 現在のパスワードが正しいか確認
+  async verifyMyPassword(password: string): Promise<void> {
+    await request("/api/me/verify-password", {
+      method: "POST",
+      body: JSON.stringify({ password }),
+    });
+  },
+
+  // パスワード変更フロー2段階目: 現在のパスワードを再確認して新パスワードに更新
+  async changeMyPassword(currentPassword: string, newPassword: string): Promise<void> {
+    await request("/api/me/password", {
+      method: "PATCH",
+      body: JSON.stringify({ currentPassword, newPassword }),
+    });
+  },
+
   async deleteMe(password: string): Promise<void> {
     await request("/api/me", {
       method: "DELETE",
