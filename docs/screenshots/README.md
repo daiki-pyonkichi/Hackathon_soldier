@@ -1,10 +1,16 @@
 # スクリーンショット置き場
 
-ルートの `README.md` から参照される画像をここに置きます。撮影して以下のファイル名で保存すると README に表示されます。
+ルートの `README.md` から参照される画像をここに置きます。
 
-- `home.png` … ホーム（在室メンバーのソルジャー一覧）
-- `ranking.png` … ランキング
-- `logs.png` … 在室ログ＋グラフ（DFT周期解析）
-- `demo.gif` （任意）… 操作デモの短い動画/GIF
+| ファイル名 | 用途 |
+|---|---|
+| `app-icon.png` | READMEヘッダーのアイコン（36px高） |
+| `slide-roster.png` | 在室メンバーのソルジャー一覧（幅720px） |
+| `slide-scenario.png` | 研究室は戦場・シナリオ説明スライド（幅720px） |
+| `slide-features.png` | 機能紹介スライド（幅720px） |
+| `slide-home-todo.png` | ホーム画面 + やることリスト（幅720px） |
+| `slide-ranking-logs.png` | ランキング + 在室ロググラフ（幅720px） |
+| `slide-soldiers.png` | 6種ソルジャーと段階変化（幅720px） |
+| `wifi-presence.png` | Wi-Fi在室判定フロー図（幅460px） |
 
-> 画像はまだ未配置です。差し込むと README のプレースホルダが実画像に変わります。
+> 画像を配置すると README のプレースホルダが実画像に切り替わります。
